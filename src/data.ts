@@ -3,9 +3,23 @@ import ngeohash from 'ngeohash'
 const zoomPrecisionMap = {
     0: 1,
     1: 1,
-    2: 2,
-    3: 3,
-    4: 3
+    2: 1,
+    3: 2,
+    4: 2,
+    5: 3,
+    6: 3,
+    7: 4,
+    8: 4,
+    9: 4,
+    10: 5,
+    11: 5,
+    12: 5, 
+    13: 6,
+    14: 6,
+    15: 6,
+    17: 7,
+    18: 7,
+    19: 7
 }
 
 // thanks stackoverflow
@@ -41,9 +55,15 @@ export const valueGeneratorGenerator = (seed?: string) => {
     return rand
 }
 
+/**
+ * create geohashes 
+ * @param zoom 
+ * @param boundingbox [s, w, n, e]
+ * @returns 
+ */
 export const generateGeohashes = (zoom: number, boundingbox: number[]) => {
-    
-    const precision = zoom in zoomPrecisionMap ? zoomPrecisionMap[zoom] : 1
+    const zoomFloor = Math.floor(zoom)
+    const precision = zoomFloor in zoomPrecisionMap ? zoomPrecisionMap[zoomFloor] : 1
     const [s, w, n, e] = boundingbox
 
     const geohashes = ngeohash.bboxes(s, w, n, e, precision)
