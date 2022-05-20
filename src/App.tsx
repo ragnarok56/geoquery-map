@@ -1,12 +1,12 @@
 import React from 'react'
 import './App.css';
-import Map from './components/Map'
+import GeoQuery from './components/GeoQuery/GeoQuery'
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Map/>
+        <GeoQuery/>
       </header>
     </div>
   )

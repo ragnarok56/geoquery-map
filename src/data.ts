@@ -70,3 +70,8 @@ export const generateGeohashes = (zoom: number, boundingbox: number[]) => {
 
     return geohashes
 }
+
+// export const getValueForGeohash(rand: (seed: string) => number) => (geohash: string) => {
+//     return geohash.split('').reduce((acc, x) => {
+//         rand(x)
+//     }, 0)

@@ -3,12 +3,19 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { BitmapLayer, PolygonLayer } from '@deck.gl/layers'
 import { TileLayer } from '@deck.gl/geo-layers'
 import { MapView, WebMercatorViewport } from '@deck.gl/core'
+import { EditableGeoJsonLayer } from 'nebula.gl'
+import GL from '@luma.gl/constants';
 
-import DeckGL from 'deck.gl'
+import DeckGL from '@deck.gl/react'
 
 import { generateGeohashes, valueGeneratorGenerator } from '../../data'
 
+import Editor from '../Editor/Editor'
 import GeohashLayer from '../GeohashLayer/GeohashLayer'
+
+import { MODES } from '../../utils/editing'
+
+import { EditorState } from '../../types'
 
 const INITIAL_VIEW_STATE = {
     latitude: 0,
@@ -18,18 +25,57 @@ const INITIAL_VIEW_STATE = {
     pitch: 0
 }
 
-interface MapProps {
-    seed?: string
+const EMPTY_FEATURE_COLLECTION = {
+  type: 'FeatureCollection',
+  features: [],
+};
+
+function getPositionCount(geometry) {
+  const flatMap = (f, arr) => arr.reduce((x, y) => [...x, ...f(y)], []);
+
+  const { type, coordinates } = geometry;
+  switch (type) {
+    case 'Point':
+      return 1;
+    case 'LineString':
+    case 'MultiPoint':
+      return coordinates.length;
+    case 'Polygon':
+    case 'MultiLineString':
+      return flatMap((x) => x, coordinates).length;
+    case 'MultiPolygon':
+      return flatMap((x) => flatMap((y) => y, x), coordinates).length;
+    default:
+      throw Error(`Unknown geometry type: ${type}`);
+  }
 }
 
-function checkLat(value: number) {
+function featuresToInfoString(featureCollection) {
+  if (!featureCollection || !featureCollection.features) {
+    return ""
+  }
+  const info = featureCollection.features.map(
+    (feature) => `${feature.geometry.type}(${getPositionCount(feature.geometry)})`
+  );
+
+  return JSON.stringify(info);
+}
+
+
+// interface MapProps {
+//     seed?: string,
+//     editor: EditorState
+//     onEditorUpdated: (editorState: EditorState) => void
+// }
+
+function checkLat(value) {
   if (value >= -90 && value <= 90)
     return value
   else
     return value < -90 ? -90 : 90
 }
 
-function checkLon(value: number) {
+function checkLon(value) {
   if (value >= -180 && value <= 180)
     return value
   else
@@ -52,12 +98,17 @@ function getViewBoundsClipped(viewState) {
   return [cUL, cUR, cLR, cLL, cUL]
 }
 
-const Map = ({ seed }: MapProps) => {
+const Map = ({ seed, editor, onEditorUpdated }) => {
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
         minimap: INITIAL_VIEW_STATE
       });
     const [geohashData, setGeohashData] = useState([])
+    const [editingFeatures, setEditingFeatures] = useState({
+      testFeatures: EMPTY_FEATURE_COLLECTION,
+      selectedFeatureIndexes: []
+    })
+
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
 
     const [viewBoundsPolygon, setViewBoundsPolygon] = useState([[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]])
@@ -65,8 +116,6 @@ const Map = ({ seed }: MapProps) => {
     const onSetViewBounds = useCallback(() => {
         const polygon = getViewBoundsClipped(viewStates.mainmap)
         setViewBoundsPolygon(polygon)
-
-        console.log('zoom: ' + viewStates.mainmap.zoom)
 
         const geohashes = generateGeohashes(
           viewStates.mainmap.zoom,
@@ -81,6 +130,28 @@ const Map = ({ seed }: MapProps) => {
         setGeohashData(geohashes.map(x => ({ geohash: x, value: valueGenerator() })))
     }, [viewStates])
     
+    const onEdit = ({ updatedData, editType, editContext }) => {
+      let updatedSelectedFeatureIndexes = editingFeatures.selectedFeatureIndexes;
+  
+      // if (!['movePosition', 'extruding', 'rotating', 'translating', 'scaling'].includes(editType)) {
+      //   // Don't log edits that happen as the pointer moves since they're really chatty
+      //   const updatedDataInfo = featuresToInfoString(updatedData);
+      //   // eslint-disable-next-line
+      //   console.log('onEdit', editType, editContext, updatedDataInfo);
+      // }
+  
+      if (editType === 'addFeature') {
+        const { featureIndexes } = editContext;
+        // Add the new feature to the selection
+        updatedSelectedFeatureIndexes = [...editingFeatures.selectedFeatureIndexes, ...featureIndexes];
+      }
+  
+      setEditingFeatures({
+        testFeatures: updatedData,
+        selectedFeatureIndexes: updatedSelectedFeatureIndexes,
+      });
+    };
+
     const layers = [
           new TileLayer({
             id: 'basemap-mainmap',
@@ -145,7 +216,22 @@ const Map = ({ seed }: MapProps) => {
             getPolygon: d => d.polygon,
             getLineColor: [255, 0, 0],
             getLineWidth: 1
-        })
+        }),
+        new EditableGeoJsonLayer({
+          id: 'geojsonEditor',
+          data: editingFeatures.testFeatures,
+          selectedFeatureIndexes: editingFeatures.selectedFeatureIndexes,
+          mode: editor.mode && MODES.filter(x => x.id === editor.mode)[0].handler,
+          onEdit: onEdit,
+          parameters: {
+            depthTest: true,
+            depthMask: false,
+    
+            blend: true,
+            blendEquation: GL.FUNC_ADD,
+            blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],
+          },
+        }),
     ]
 
     const layerFilter = useCallback(({layer, viewport}) => {
@@ -199,6 +285,16 @@ const Map = ({ seed }: MapProps) => {
         }
       }, []);
 
+      
+    const onSwitchMode = (evt) => {
+      const newModeId = evt.target.value === editor.mode ? null : evt.target.value;
+
+      onEditorUpdated({
+        ...editor,
+        mode: newModeId
+      })
+    };
+    
     return (
         <>
             <DeckGL
@@ -206,12 +302,26 @@ const Map = ({ seed }: MapProps) => {
                 layerFilter={ layerFilter }
                 layers={ layers }
                 views={ views }
-                viewState={viewStates}
-                onViewStateChange={ onViewStateChange }
-                />
-            <div style={ { position: 'absolute', cursor: 'pointer', padding: '10px', margin: '50px', top: 0, left: 0, background: "#888" } }
-                onClick={ onSetViewBounds }> 
-                <span>Set Bounds</span>
+                viewState={ viewStates }
+                onViewStateChange={ onViewStateChange }/>
+            <div style={ { position: 'absolute'}}>
+              <Editor
+                editor={editor}
+              />
+            </div>
+            <div style={ { position: 'absolute', padding: '10px', margin: '50px', top: 0, left: 0 } }>
+              <div style={ { cursor: 'pointer', padding: '10px', marginBottom: '10px',background: "#888" } }
+                  onClick={ onSetViewBounds }> 
+                  <span>Set Bounds</span>
+              </div>
+              <select onChange={ onSwitchMode }>
+                    <option value="">--Please choose a draw mode--</option>
+                    {MODES.map((mode) => (
+                        <option key={mode.id} value={mode.id}>
+                        {mode.text}
+                        </option>
+                    ))}
+                </select>
             </div>
         </>
     )
