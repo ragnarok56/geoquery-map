@@ -41,15 +41,19 @@ const VIEWS = [
             doubleClickZoom: false,
         }
     }),
-    new MapView({
-        id: 'minimap',
-        x: '80%',
-        y: '65%',
-        height: '30%',
-        width: '15%',
-        clear: true,
-        controller: true
-    })
+    // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
+    // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
+    // and the nebula stuff for editing since its all baked in to react-map-gl MapContext which doesnt appear to 
+    // allow for selecting a viewport to use for its context
+    // new MapView({
+    //     id: 'minimap',
+    //     x: '80%',
+    //     y: '65%',
+    //     height: '30%',
+    //     width: '15%',
+    //     clear: true,
+    //     controller: true
+    // })
 ]
 
 function getPositionCount(geometry) {
@@ -93,6 +97,8 @@ function featuresToInfoString(featureCollection) {
 
 const Map = ({ seed, editor, onEditorUpdated }) => {
     const [viewBoundsPolygon, setViewBoundsPolygon] = useState([[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]])
+
+    const [cursorCoordinates, setCursorCoordiantes] = useState(null)
 
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
@@ -141,6 +147,13 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     const onEdit = ({ updatedData, editType, editContext }) => {
         let updatedSelectedFeatureIndexes = editingFeatures.selectedFeatureIndexes;
 
+        // if (!['movePosition', 'extruding', 'rotating', 'translating', 'scaling'].includes(editType)) {
+        //     // Don't log edits that happen as the pointer moves since they're really chatty
+        //     const updatedDataInfo = featuresToInfoString(updatedData);
+        //     // eslint-disable-next-line
+        //     console.log('onEdit', editType, editContext, updatedDataInfo);
+        // }
+
         if (editType === 'addFeature') {
             const { featureIndexes } = editContext;
             // Add the new feature to the selection
@@ -160,6 +173,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
         mode: editor.mode?.handler,
         onEdit: onEdit,
         autoHighlight: false,
+        editHandleType: 'point',
         // not sure what these do
         parameters: {
             depthTest: true,
@@ -167,7 +181,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
             blend: true,
             blendEquation: GL.FUNC_ADD,
             blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],
-        },
+        }
     })
 
     const geohashLayer = new GeohashLayer({
@@ -247,7 +261,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     };
 
     return (
-        <>
+        <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
                 controller
                 layerFilter={layerFilter}
@@ -256,15 +270,17 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
                 viewState={viewStates}
                 getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
                 onViewStateChange={onViewStateChange}
-                onClick={onLayerClick} />
-            <div style={{ position: 'absolute' }}>
-                <Editor editor={editor}
-                />
-            </div>
+                onClick={onLayerClick}
+                height="100%"
+                width="100%"
+                onHover={(info) => setCursorCoordiantes(info.coordinate)} />
             <Toolbar editor={editor}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds} />
-        </>
+            <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
+                {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
+            </div>
+        </div>
     )
 }
 
