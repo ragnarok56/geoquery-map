@@ -3,8 +3,6 @@ import {
     Editor as Draw
 } from 'react-map-gl-draw'
 
-import { MODES } from '../../utils/editing'
-
 import { EditorState } from '../../types'
 
 interface EditorProps {
@@ -17,7 +15,7 @@ const Editor = ({ editor }: EditorProps) => {
         <Draw
             clickRadius={12}
             features={ editor.features }
-            mode={ MODES.find(x => x.id === editor.mode) }
+            mode={ editor.mode }
             onSelect={ () => console.log('onSelect') }
             onUpdate={ () => console.log('onUpdate') }
         />

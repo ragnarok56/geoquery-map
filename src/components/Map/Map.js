@@ -1,8 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 
-import { BitmapLayer, PolygonLayer } from '@deck.gl/layers'
-import { TileLayer } from '@deck.gl/geo-layers'
-import { MapView, WebMercatorViewport } from '@deck.gl/core'
+import { PolygonLayer } from '@deck.gl/layers'
+import { MapView } from '@deck.gl/core'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
 
@@ -12,10 +11,14 @@ import { generateGeohashes, valueGeneratorGenerator } from '../../data'
 
 import Editor from '../Editor/Editor'
 import GeohashLayer from '../GeohashLayer/GeohashLayer'
+import Toolbar from '../ToolBar'
 
-import { MODES } from '../../utils/editing'
+import { getViewBoundsClipped } from '../../utils/view'
+
+import BasemapLayers from './BaseMaps'
 
 import { EditorState } from '../../types'
+import { getEditMode } from '../../utils/editing';
 
 const INITIAL_VIEW_STATE = {
     latitude: 0,
@@ -29,6 +32,21 @@ const EMPTY_FEATURE_COLLECTION = {
   type: 'FeatureCollection',
   features: [],
 };
+
+const VIEWS = [
+    new MapView({
+        id: 'mainmap'
+    }),
+    new MapView({
+        id: 'minimap',
+        x: '80%',
+        y: '65%',
+        height: '30%',
+        width: '15%',
+        clear: true,
+        controller: true
+      })
+]
 
 function getPositionCount(geometry) {
   const flatMap = (f, arr) => arr.reduce((x, y) => [...x, ...f(y)], []);
@@ -68,42 +86,17 @@ function featuresToInfoString(featureCollection) {
 //     onEditorUpdated: (editorState: EditorState) => void
 // }
 
-function checkLat(value) {
-  if (value >= -90 && value <= 90)
-    return value
-  else
-    return value < -90 ? -90 : 90
-}
-
-function checkLon(value) {
-  if (value >= -180 && value <= 180)
-    return value
-  else
-    return value < -180 ? -180 : 180
-}
-
-function getCorner(viewport, coord) {
-  const [lon, lat] = viewport.unproject(coord);
-  return [checkLon(lon), checkLat(lat)]
-}
-
-function getViewBoundsClipped(viewState) {
-  const viewport = new WebMercatorViewport(viewState);
-
-  const cUL = getCorner(viewport, [0, 0])
-  const cUR = getCorner(viewport, [viewport.width, 0])
-  const cLR = getCorner(viewport, [viewport.width, viewport.height])
-  const cLL = getCorner(viewport, [0, viewport.height])
-  
-  return [cUL, cUR, cLR, cLL, cUL]
-}
 
 const Map = ({ seed, editor, onEditorUpdated }) => {
+    const [viewBoundsPolygon, setViewBoundsPolygon] = useState([[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]])
+
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
         minimap: INITIAL_VIEW_STATE
       });
+
     const [geohashData, setGeohashData] = useState([])
+
     const [editingFeatures, setEditingFeatures] = useState({
       testFeatures: EMPTY_FEATURE_COLLECTION,
       selectedFeatureIndexes: []
@@ -111,7 +104,6 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
 
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
 
-    const [viewBoundsPolygon, setViewBoundsPolygon] = useState([[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]])
 
     const onSetViewBounds = useCallback(() => {
         const polygon = getViewBoundsClipped(viewStates.mainmap)
@@ -132,14 +124,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     
     const onEdit = ({ updatedData, editType, editContext }) => {
       let updatedSelectedFeatureIndexes = editingFeatures.selectedFeatureIndexes;
-  
-      // if (!['movePosition', 'extruding', 'rotating', 'translating', 'scaling'].includes(editType)) {
-      //   // Don't log edits that happen as the pointer moves since they're really chatty
-      //   const updatedDataInfo = featuresToInfoString(updatedData);
-      //   // eslint-disable-next-line
-      //   console.log('onEdit', editType, editContext, updatedDataInfo);
-      // }
-  
+    
       if (editType === 'addFeature') {
         const { featureIndexes } = editContext;
         // Add the new feature to the selection
@@ -153,46 +138,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     };
 
     const layers = [
-          new TileLayer({
-            id: 'basemap-mainmap',
-            data: 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        
-            minZoom: 0,
-            maxZoom: 19,
-            tileSize: 256,
-        
-            renderSubLayers: props => {
-              const {
-                bbox: {west, south, east, north}
-              } = props.tile;
-        
-              return new BitmapLayer(props, {
-                data: null,
-                image: props.data,
-                bounds: [west, south, east, north]
-              });
-            }
-          }),
-          new TileLayer({
-            id: 'basemap-minimap',
-            data: 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        
-            minZoom: 0,
-            maxZoom: 19,
-            tileSize: 256,
-        
-            renderSubLayers: props => {
-              const {
-                bbox: {west, south, east, north}
-              } = props.tile;
-        
-              return new BitmapLayer(props, {
-                data: null,
-                image: props.data,
-                bounds: [west, south, east, north]
-              });
-            }
-          }),
+          ...BasemapLayers,
           new GeohashLayer({
             id: 'geohash-layer',
             data: geohashData,
@@ -221,12 +167,12 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
           id: 'geojsonEditor',
           data: editingFeatures.testFeatures,
           selectedFeatureIndexes: editingFeatures.selectedFeatureIndexes,
-          mode: editor.mode && MODES.filter(x => x.id === editor.mode)[0].handler,
+          mode: editor.mode?.handler,
           onEdit: onEdit,
+          // not sure what these do
           parameters: {
             depthTest: true,
             depthMask: false,
-    
             blend: true,
             blendEquation: GL.FUNC_ADD,
             blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],
@@ -248,20 +194,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
         return false;
       }, []);
 
-    const views = [
-        new MapView({
-            id: 'mainmap'
-        }),
-        new MapView({
-            id: 'minimap',
-            x: '80%',
-            y: '65%',
-            height: '30%',
-            width: '15%',
-            clear: true,
-            controller: true
-          })
-    ]
+    
 
     const onViewStateChange = useCallback(({viewId, viewState}) => {      
         if (viewId === 'mainmap') {
@@ -286,43 +219,31 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
       }, []);
 
       
-    const onSwitchMode = (evt) => {
-      const newModeId = evt.target.value === editor.mode ? null : evt.target.value;
-
+    const onSwitchMode = (id) => {
       onEditorUpdated({
         ...editor,
-        mode: newModeId
+        mode: getEditMode(id)
       })
     };
     
+    console.log(editor)
+
     return (
         <>
             <DeckGL
                 controller
                 layerFilter={ layerFilter }
                 layers={ layers }
-                views={ views }
+                views={ VIEWS }
                 viewState={ viewStates }
                 onViewStateChange={ onViewStateChange }/>
             <div style={ { position: 'absolute'}}>
-              <Editor
-                editor={editor}
+              <Editor editor={editor}
               />
             </div>
-            <div style={ { position: 'absolute', padding: '10px', margin: '50px', top: 0, left: 0 } }>
-              <div style={ { cursor: 'pointer', padding: '10px', marginBottom: '10px',background: "#888" } }
-                  onClick={ onSetViewBounds }> 
-                  <span>Set Bounds</span>
-              </div>
-              <select onChange={ onSwitchMode }>
-                    <option value="">--Please choose a draw mode--</option>
-                    {MODES.map((mode) => (
-                        <option key={mode.id} value={mode.id}>
-                        {mode.text}
-                        </option>
-                    ))}
-                </select>
-            </div>
+            <Toolbar editor={ editor }
+                onSetMode={ onSwitchMode }
+                onRefresh={ onSetViewBounds }/>
         </>
     )
 }

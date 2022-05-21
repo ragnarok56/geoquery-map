@@ -1,16 +1,12 @@
-// export interface Feature {
-//     id: string
-//     properties: any
-//     geometry: {
-//       type: string
-//       coordinates: any
-//     }
-// }
 
-// import { Feature } from '@nebula.gl/edit-modes'
+export interface EditorMode {
+    id: string
+    text: string
+    handler: any
+}
 
 export interface EditorState {
-    mode: string
+    mode?: EditorMode
     features: any[]
     selectedFeatureIndex: number
 }
