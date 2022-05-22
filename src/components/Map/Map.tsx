@@ -205,7 +205,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
         filled: false,
         wireframe: true,
         lineWidthMinPixels: 10,
-        getPolygon: d => d.polygon,
+        getPolygon: (d: any) => d.polygon,
         getLineColor: [255, 0, 0],
         getLineWidth: 1
     })
@@ -267,7 +267,7 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
                 layerFilter={layerFilter}
                 layers={layers}
                 views={VIEWS}
-                viewState={viewStates}
+                viewState={viewStates.mainmap}
                 getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
                 onViewStateChange={onViewStateChange}
                 onClick={onLayerClick}

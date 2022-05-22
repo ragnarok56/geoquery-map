@@ -12,6 +12,7 @@ const GeoQuery = () => {
 
     return (
         <Map
+            seed="random"
             editor={ editorState }
             onEditorUpdated={ editor => setEditorState(editor) }/>
     )
