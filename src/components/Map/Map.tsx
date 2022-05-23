@@ -38,7 +38,7 @@ const VIEWS = [
         id: 'mainmap',
         controller: {
             type: MapController,
-            doubleClickZoom: false,
+            doubleClickZoom: false
         }
     }),
     // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
@@ -269,8 +269,9 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
                 views={VIEWS}
                 viewState={viewStates.mainmap}
                 getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
-                onViewStateChange={onViewStateChange}
-                onClick={onLayerClick}
+                // @ts-expect-error
+                onViewStateChange={ onViewStateChange }
+                onClick={ onLayerClick }
                 height="100%"
                 width="100%"
                 onHover={(info) => setCursorCoordiantes(info.coordinate)} />
