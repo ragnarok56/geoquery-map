@@ -4,16 +4,22 @@ import { MODES } from '../../utils/editing'
 
 interface ToolbarProps {
     editor: EditorState
+    perspectiveEnabled: boolean
     onRefresh: () => void
     onSetMode: (id: string) => void
+    onTogglePerspective: () => void
 }
 
-const Toolbar = ({ editor, onRefresh, onSetMode }: ToolbarProps) => {
+const Toolbar = ({ editor, perspectiveEnabled, onRefresh, onSetMode, onTogglePerspective }: ToolbarProps) => {
     return (
-        <div style={{ position: 'absolute', padding: '10px', margin: '50px', top: 0, left: 0, background: "#888" }}>
+        <div style={{ position: 'absolute', padding: '10px', margin: '50px', top: 0, left: 0, background: "#888", width: '200px' }}>
             <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333" }}
                 onClick={onRefresh}>
                 <span>"Refresh"</span>
+            </div>
+            <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333", fontSize: 16 }}
+                onClick={onTogglePerspective}>
+                <span>{ perspectiveEnabled ? 'Exit the 3rd Dimension' : 'Enter the 3rd Dimension' }</span>
             </div>
 
             <h4 style={ { marginBottom: '5px' } }>Edit Mode</h4>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
+import { EditorState } from '../../types'
 import { MODES_MAP } from '../../utils/editing'
 
 import Map from '../Map'
 
 const GeoQuery = () => {
-    const [editorState, setEditorState] = useState({
+    const [editorState, setEditorState] = useState<EditorState>({
         mode: MODES_MAP['view'],
         features: [],
         selectedFeatureIndex: null

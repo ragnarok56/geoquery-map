@@ -33,29 +33,6 @@ const EMPTY_FEATURE_COLLECTION = {
     features: [],
 };
 
-const VIEWS = [
-    new MapView({
-        id: 'mainmap',
-        controller: {
-            type: MapController,
-            doubleClickZoom: false
-        }
-    }),
-    // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
-    // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
-    // and the nebula stuff for editing since its all baked in to react-map-gl MapContext which doesnt appear to 
-    // allow for selecting a viewport to use for its context
-    // new MapView({
-    //     id: 'minimap',
-    //     x: '80%',
-    //     y: '65%',
-    //     height: '30%',
-    //     width: '15%',
-    //     clear: true,
-    //     controller: true
-    // })
-]
-
 function getPositionCount(geometry) {
     const flatMap = (f, arr) => arr.reduce((x, y) => [...x, ...f(y)], []);
 
@@ -88,17 +65,19 @@ function featuresToInfoString(featureCollection) {
 }
 
 
-// interface MapProps {
-//     seed?: string,
-//     editor: EditorState
-//     onEditorUpdated: (editorState: EditorState) => void
-// }
+interface MapProps {
+    seed?: string,
+    editor: EditorState
+    onEditorUpdated: (editorState: EditorState) => void
+}
 
 
-const Map = ({ seed, editor, onEditorUpdated }) => {
+const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const [viewBoundsPolygon, setViewBoundsPolygon] = useState([[-180, -90], [-180, 90], [180, 90], [180, -90], [-180, -90]])
 
     const [cursorCoordinates, setCursorCoordiantes] = useState(null)
+
+    const [perspectiveEnabled, setPerspectiveEnabled] = useState(true)
 
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
@@ -113,6 +92,45 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     })
 
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
+    
+    const VIEWS = [
+        new MapView({
+            id: 'mainmap',
+            controller: {
+                type: MapController,
+                doubleClickZoom: false,
+                dragRotate: perspectiveEnabled
+            }
+        }),
+        // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
+        // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
+        // and the nebula stuff for editing since its all baked in to react-map-gl MapContext which doesnt appear to 
+        // allow for selecting a viewport to use for its context
+        // new MapView({
+        //     id: 'minimap',
+        //     x: '80%',
+        //     y: '65%',
+        //     height: '30%',
+        //     width: '15%',
+        //     clear: true,
+        //     controller: true
+        // })
+    ]
+
+    const onTogglePerspective = () => {
+        const updatedPerspective = !perspectiveEnabled
+        setPerspectiveEnabled(updatedPerspective)
+        setViewStates(currentViewStates => ({
+            mainmap: {
+                ...currentViewStates.mainmap,
+                pitch: updatedPerspective ? currentViewStates.mainmap.pitch : 0,
+                bearing: updatedPerspective ? currentViewStates.mainmap.bearing : 0
+            },
+            minimap: {
+                ...currentViewStates.minimap
+            }
+        }));
+    }
 
 
     const onSetViewBounds = useCallback(() => {
@@ -263,11 +281,11 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
     return (
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
-                controller
                 layerFilter={layerFilter}
                 layers={layers}
                 views={VIEWS}
-                viewState={viewStates.mainmap}
+                // @ts-expect-error - this can an object of viewstates
+                viewState={viewStates}
                 getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
                 // @ts-expect-error
                 onViewStateChange={ onViewStateChange }
@@ -276,8 +294,10 @@ const Map = ({ seed, editor, onEditorUpdated }) => {
                 width="100%"
                 onHover={(info) => setCursorCoordiantes(info.coordinate)} />
             <Toolbar editor={editor}
+                perspectiveEnabled={ perspectiveEnabled }
                 onSetMode={onSwitchMode}
-                onRefresh={onSetViewBounds} />
+                onRefresh={onSetViewBounds} 
+                onTogglePerspective={onTogglePerspective}/>
             <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
                 {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
             </div>
