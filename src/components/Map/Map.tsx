@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useCallback, useMemo } from 'react'
 import { ViewMode } from "@nebula.gl/edit-modes";
 import { PolygonLayer } from '@deck.gl/layers'
@@ -9,7 +10,6 @@ import DeckGL from '@deck.gl/react'
 
 import { generateGeohashes, valueGeneratorGenerator } from '../../data'
 
-import Editor from '../Editor/Editor'
 import GeohashLayer from '../GeohashLayer/GeohashLayer'
 import Toolbar from '../ToolBar'
 
@@ -19,6 +19,12 @@ import BasemapLayers from './BaseMaps'
 
 import { EditorState } from '../../types'
 import { getEditMode } from '../../utils/editing';
+import { RGBAColor } from 'deck.gl';
+
+function hex2rgb(hex: string) {
+    const value = parseInt(hex, 16);
+    return [16, 8, 0].map((shift) => ((value >> shift) & 0xff) / 255);
+}
 
 const INITIAL_VIEW_STATE = {
     latitude: 0,
@@ -32,6 +38,23 @@ const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
     features: [],
 };
+
+// this is fun but not useful to have lots 
+// of random colors
+const FEATURE_COLORS = [
+    '00AEE4',
+    // 'DAF0E3',
+    // '9BCC32',
+    // '07A35A',
+    // 'F7DF90',
+    // 'EA376C',
+    // '6A126A',
+    // 'FCB09B',
+    // 'B0592D',
+    // 'C1B5E3',
+    // '9C805B',
+    // 'CCDFE5',
+].map(hex2rgb);
 
 function getPositionCount(geometry) {
     const flatMap = (f, arr) => arr.reduce((x, y) => [...x, ...f(y)], []);
@@ -92,7 +115,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     })
 
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
-    
+
     const VIEWS = [
         new MapView({
             id: 'mainmap',
@@ -132,6 +155,55 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }));
     }
 
+    const _getDeckColorForFeature = (index: number, bright: number, alpha: number): RGBAColor => {
+        const length = FEATURE_COLORS.length;
+        const color = FEATURE_COLORS[index % length].map((c) => c * bright * 255);
+
+        // @ts-ignore
+        return [...color, alpha * 255];
+    }
+
+    const getFillColor = (feature, isSelected) => {
+        const index = editingFeatures.testFeatures.features.indexOf(feature);
+        return isSelected
+            ? _getDeckColorForFeature(index, 1.0, 0.5)
+            : _getDeckColorForFeature(index, 0.5, 0.5);
+    };
+
+    const getLineColor = (feature, isSelected) => {
+        const index = editingFeatures.testFeatures.features.indexOf(feature);
+        return isSelected
+            ? _getDeckColorForFeature(index, 1.0, 1.0)
+            : _getDeckColorForFeature(index, 0.5, 1.0);
+    };
+
+    const handleDeleteFeature = useCallback((i) => {
+        setEditingFeatures({
+            ...editingFeatures,
+            testFeatures: {
+                ...editingFeatures.testFeatures,
+                features: [
+                    ...editingFeatures.testFeatures.features.slice(0, i),
+                    ...editingFeatures.testFeatures.features.slice(i + 1)
+                ]
+            }
+        })
+    }, [editingFeatures])
+
+    const handleToggleSelectFeature = useCallback((i) => {
+        const { selectedFeatureIndexes } = editingFeatures
+        if (selectedFeatureIndexes.includes(i)) {
+            setEditingFeatures({
+                ...editingFeatures,
+                selectedFeatureIndexes: selectedFeatureIndexes.filter((e) => e !== i),
+            })
+        } else {
+            setEditingFeatures({
+                ...editingFeatures,
+                selectedFeatureIndexes: [...selectedFeatureIndexes, i],
+            });
+        }
+    }, [editingFeatures])
 
     const onSetViewBounds = useCallback(() => {
         const polygon = getViewBoundsClipped(viewStates.mainmap)
@@ -148,7 +220,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         )
 
         setGeohashData(geohashes.map(x => ({ geohash: x, value: valueGenerator() })))
-    }, [viewStates])
+    }, [viewStates, valueGenerator])
 
     const onLayerClick = (info) => {
         if (editor.mode?.handler !== ViewMode) {
@@ -176,12 +248,15 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             const { featureIndexes } = editContext;
             // Add the new feature to the selection
             updatedSelectedFeatureIndexes = [...editingFeatures.selectedFeatureIndexes, ...featureIndexes];
-        }
 
-        setEditingFeatures({
-            testFeatures: updatedData,
-            selectedFeatureIndexes: updatedSelectedFeatureIndexes,
-        });
+            // add title property to added feature
+            updatedData.features[featureIndexes[0]].properties.title = 'Unnamed Area'
+
+            setEditingFeatures({
+                testFeatures: updatedData,
+                selectedFeatureIndexes: updatedSelectedFeatureIndexes,
+            });
+        }
     };
 
     const editableGeoJsonLayer = new EditableGeoJsonLayer({
@@ -192,6 +267,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         onEdit: onEdit,
         autoHighlight: false,
         editHandleType: 'point',
+        getFillColor: getFillColor,
+        getLineColor: getLineColor,
         // not sure what these do
         parameters: {
             depthTest: true,
@@ -273,7 +350,6 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const onSwitchMode = (id) => {
         onEditorUpdated({
-            ...editor,
             mode: getEditMode(id)
         })
     };
@@ -287,19 +363,38 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 // @ts-expect-error - this can an object of viewstates
                 viewState={viewStates}
                 getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
-                // @ts-expect-error
-                onViewStateChange={ onViewStateChange }
-                onClick={ onLayerClick }
+                // @ts-expect-error - not typed correctly, missing viewId prop
+                onViewStateChange={onViewStateChange}
+                onClick={onLayerClick}
                 height="100%"
                 width="100%"
                 onHover={(info) => setCursorCoordiantes(info.coordinate)} />
             <Toolbar editor={editor}
-                perspectiveEnabled={ perspectiveEnabled }
+                perspectiveEnabled={perspectiveEnabled}
                 onSetMode={onSwitchMode}
-                onRefresh={onSetViewBounds} 
-                onTogglePerspective={onTogglePerspective}/>
-            <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
+                onRefresh={onSetViewBounds}
+                onTogglePerspective={onTogglePerspective} />
+            <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888' }}>
                 {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
+            </div>
+            <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
+                <div>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
+                        {editingFeatures.testFeatures.features.map((x, i) => {
+                            return (
+                                <li key={i}>
+                                    <span style={{ marginRight: '10px' }}>{x.properties?.title}</span>
+                                    <span onClick={() => handleToggleSelectFeature(i)}
+                                        style={{ cursor: 'pointer', marginRight: '3px' }}
+                                        title="select">+</span>
+                                    <span onClick={() => handleDeleteFeature(i)}
+                                        title="delete"
+                                        style={{ cursor: 'pointer' }}>X</span>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
             </div>
         </div>
     )

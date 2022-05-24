@@ -1,3 +1,4 @@
+/* eslint-disable no-mixed-operators */
 import ngeohash from 'ngeohash'
 
 const zoomPrecisionMap = {
