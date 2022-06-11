@@ -5,6 +5,7 @@ import { PolygonLayer } from '@deck.gl/layers'
 import { MapView, MapController } from '@deck.gl/core'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
+import turfCentroid from '@turf/centroid';
 
 import DeckGL from '@deck.gl/react'
 
@@ -19,7 +20,7 @@ import BasemapLayers from './BaseMaps'
 
 import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
-import { RGBAColor } from 'deck.gl';
+import { RGBAColor, TextLayer } from 'deck.gl';
 import NAIControl from '../NAIControl';
 
 function hex2rgb(hex: string) {
@@ -103,6 +104,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const [perspectiveEnabled, setPerspectiveEnabled] = useState(true)
 
+    const [featureNamesVisible, setFeatureNamesVisible] = useState(true)
+
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
         minimap: INITIAL_VIEW_STATE
@@ -111,6 +114,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const [geohashData, setGeohashData] = useState([])
 
     const [editingFeatures, setEditingFeatures] = useState<NAIEditing>({
+        name: null,
         featureCollection: EMPTY_FEATURE_COLLECTION,
         selectedFeatureIndexes: []
     })
@@ -203,6 +207,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         })
     }, [editingFeatures])
 
+    const handleEditFeatureCollectionName = useCallback(name => {
+        setEditingFeatures({
+            ...editingFeatures,
+            name
+        })
+    }, [editingFeatures])
+
     const handleToggleSelectFeature = useCallback((i) => {
         const { selectedFeatureIndexes } = editingFeatures
         if (selectedFeatureIndexes.includes(i)) {
@@ -282,7 +293,6 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         editHandleType: 'point',
         getFillColor: getFillColor,
         getLineColor: getLineColor,
-        
         // not sure what these do
         parameters: {
             depthTest: true,
@@ -293,6 +303,22 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }
     })
 
+    const geoJsonNames = editingFeatures.featureCollection.features?.filter(x => x.geometry.type === 'Polygon')
+        .map(x => {
+            return {
+                position: turfCentroid(x.geometry).geometry.coordinates,
+                text: x.properties?.name
+            }
+        })
+    const geoJsonNamesLayer = new TextLayer({
+        id: 'geojsonNames',
+        visible: featureNamesVisible,
+        data: geoJsonNames,
+        parameters: {
+            depthTest: false
+        }
+    })
+    
     const geohashLayer = new GeohashLayer({
         id: 'geohash-layer',
         data: geohashData,
@@ -323,8 +349,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         ...BasemapLayers,
         geohashLayer,
         viewBoxPolygonLayer,
-        editableGeoJsonLayer
+        editableGeoJsonLayer,
+        geoJsonNamesLayer
     ]
+
+    
 
     const layerFilter = useCallback(({ layer, viewport }) => {
         if (viewport.id === 'minimap' && layer.id === 'basemap-minimap') {
@@ -368,6 +397,10 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         })
     };
 
+    const onToggleFeatureNamesVisible = () => {
+        setFeatureNamesVisible(x => !x)
+    }
+
     return (
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
@@ -385,9 +418,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 onHover={(info) => setCursorCoordiantes(info.coordinate)} />
             <Toolbar editor={editor}
                 perspectiveEnabled={perspectiveEnabled}
+                featureNamesVisible={featureNamesVisible}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds}
-                onTogglePerspective={onTogglePerspective} />
+                onTogglePerspective={onTogglePerspective}
+                onToggleFeatureNamesVisible={onToggleFeatureNamesVisible}/>
             <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888' }}>
                 {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
             </div>
@@ -395,7 +430,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 editingFeatures={ editingFeatures }
                 onDeleteFeature={ handleDeleteFeature }
                 onToggleSelectFeature={ handleToggleSelectFeature }
-                onEditFeatureName={ handleEditFeatureName }/>
+                onEditFeatureName={ handleEditFeatureName }
+                onEditFeatureCollectionName={ handleEditFeatureCollectionName }/>
         </div>
     )
 }

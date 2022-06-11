@@ -13,7 +13,21 @@ class LogMode extends GeoJsonEditMode {
     handlePointerMove(event) {}
     handleStartDragging(event) {}
     handleStopDragging(event) {}
-  }
+}
+
+// class TooltipViewMode extends ViewMode {
+//     getTooltips(props: ModeProps<FeatureCollection>): Tooltip[] {
+    
+//         return props.data?.features?.map(x => {
+//             const centroid = turfCentroid(x.geometry)
+
+//             return {
+//                 position: centroid.geometry.coordinates,
+//                 text: x.properties?.name
+//             } as Tooltip
+//         })
+//       }
+// }
 
 export const MODES: EditorMode[] = [
     { id: 'view', text: 'View', handler: ViewMode },

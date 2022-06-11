@@ -16,6 +16,7 @@ export interface NAIFeatureProperties {
 export type NAIFeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Polygon, NAIFeatureProperties>
 
 export interface NAIEditing {
+    name?: string
     featureCollection: NAIFeatureCollection
     selectedFeatureIndexes: number[]
 }

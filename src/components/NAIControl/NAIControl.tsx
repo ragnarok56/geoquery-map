@@ -6,12 +6,21 @@ interface NAIControlProps {
     onToggleSelectFeature: (i: number) => void
     onDeleteFeature: (i: number) => void
     onEditFeatureName: (i: number, name: string) => void
+    onEditFeatureCollectionName: (name: string) => void
 }
 
-const NAIControl = ({ editingFeatures, onToggleSelectFeature, onDeleteFeature, onEditFeatureName }: NAIControlProps) => {
+const NAIControl = ({ 
+    editingFeatures,
+    onToggleSelectFeature,
+    onDeleteFeature,
+    onEditFeatureName,
+    onEditFeatureCollectionName
+}: NAIControlProps) => {
     return (
         <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
             <div>
+                <input type="text" value={ editingFeatures.name || "New NAI" }
+                    onChange={ (e) => onEditFeatureCollectionName(e.target.value) }/>
                 <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
                     {editingFeatures.featureCollection.features.map((x, i) => {
                         return (
