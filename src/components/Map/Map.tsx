@@ -17,9 +17,10 @@ import { getViewBoundsClipped } from '../../utils/view'
 
 import BasemapLayers from './BaseMaps'
 
-import { EditorState } from '../../types'
+import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
 import { RGBAColor } from 'deck.gl';
+import NAIControl from '../NAIControl';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -34,10 +35,10 @@ const INITIAL_VIEW_STATE = {
     pitch: 0
 }
 
-const EMPTY_FEATURE_COLLECTION = {
+const EMPTY_FEATURE_COLLECTION: NAIFeatureCollection = {
     type: 'FeatureCollection',
     features: [],
-};
+}
 
 // this is fun but not useful to have lots 
 // of random colors
@@ -109,8 +110,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const [geohashData, setGeohashData] = useState([])
 
-    const [editingFeatures, setEditingFeatures] = useState({
-        testFeatures: EMPTY_FEATURE_COLLECTION,
+    const [editingFeatures, setEditingFeatures] = useState<NAIEditing>({
+        featureCollection: EMPTY_FEATURE_COLLECTION,
         selectedFeatureIndexes: []
     })
 
@@ -164,14 +165,14 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     }
 
     const getFillColor = (feature, isSelected) => {
-        const index = editingFeatures.testFeatures.features.indexOf(feature);
+        const index = editingFeatures.featureCollection.features.indexOf(feature);
         return isSelected
             ? _getDeckColorForFeature(index, 1.0, 0.5)
             : _getDeckColorForFeature(index, 0.5, 0.5);
     };
 
     const getLineColor = (feature, isSelected) => {
-        const index = editingFeatures.testFeatures.features.indexOf(feature);
+        const index = editingFeatures.featureCollection.features.indexOf(feature);
         return isSelected
             ? _getDeckColorForFeature(index, 1.0, 1.0)
             : _getDeckColorForFeature(index, 0.5, 1.0);
@@ -180,12 +181,24 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const handleDeleteFeature = useCallback((i) => {
         setEditingFeatures({
             ...editingFeatures,
-            testFeatures: {
-                ...editingFeatures.testFeatures,
+            featureCollection: {
+                ...editingFeatures.featureCollection,
                 features: [
-                    ...editingFeatures.testFeatures.features.slice(0, i),
-                    ...editingFeatures.testFeatures.features.slice(i + 1)
+                    ...editingFeatures.featureCollection.features.slice(0, i),
+                    ...editingFeatures.featureCollection.features.slice(i + 1)
                 ]
+            }
+        })
+    }, [editingFeatures])
+
+    const handleEditFeatureName = useCallback((i, name) => {
+        const updatedFeatures = [...editingFeatures.featureCollection.features]
+        updatedFeatures[i].properties.name = name
+        setEditingFeatures({
+            ...editingFeatures,
+            featureCollection: {
+                ...editingFeatures.featureCollection,
+                features: updatedFeatures
             }
         })
     }, [editingFeatures])
@@ -249,11 +262,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             // Add the new feature to the selection
             updatedSelectedFeatureIndexes = [...editingFeatures.selectedFeatureIndexes, ...featureIndexes];
 
-            // add title property to added feature
-            updatedData.features[featureIndexes[0]].properties.title = 'Unnamed Area'
+            // add name property to added feature
+            updatedData.features[featureIndexes[0]].properties.name = 'Unnamed Area'
 
             setEditingFeatures({
-                testFeatures: updatedData,
+                featureCollection: updatedData,
                 selectedFeatureIndexes: updatedSelectedFeatureIndexes,
             });
         }
@@ -261,7 +274,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const editableGeoJsonLayer = new EditableGeoJsonLayer({
         id: 'geojsonEditor',
-        data: editingFeatures.testFeatures,
+        data: editingFeatures.featureCollection,
         selectedFeatureIndexes: editingFeatures.selectedFeatureIndexes,
         mode: editor.mode?.handler,
         onEdit: onEdit,
@@ -269,6 +282,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         editHandleType: 'point',
         getFillColor: getFillColor,
         getLineColor: getLineColor,
+        
         // not sure what these do
         parameters: {
             depthTest: true,
@@ -377,25 +391,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888' }}>
                 {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
             </div>
-            <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
-                <div>
-                    <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
-                        {editingFeatures.testFeatures.features.map((x, i) => {
-                            return (
-                                <li key={i}>
-                                    <span style={{ marginRight: '10px' }}>{x.properties?.title}</span>
-                                    <span onClick={() => handleToggleSelectFeature(i)}
-                                        style={{ cursor: 'pointer', marginRight: '3px' }}
-                                        title="select">+</span>
-                                    <span onClick={() => handleDeleteFeature(i)}
-                                        title="delete"
-                                        style={{ cursor: 'pointer' }}>X</span>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                </div>
-            </div>
+            <NAIControl 
+                editingFeatures={ editingFeatures }
+                onDeleteFeature={ handleDeleteFeature }
+                onToggleSelectFeature={ handleToggleSelectFeature }
+                onEditFeatureName={ handleEditFeatureName }/>
         </div>
     )
 }

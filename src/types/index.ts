@@ -9,7 +9,13 @@ export interface EditorState {
     mode?: EditorMode
 }
 
-export interface GeoJsonFeatures {
-    features: any[]
-    selectedFeatureIndex: number
+export interface NAIFeatureProperties {
+    name: string
+}
+
+export type NAIFeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Polygon, NAIFeatureProperties>
+
+export interface NAIEditing {
+    featureCollection: NAIFeatureCollection
+    selectedFeatureIndexes: number[]
 }
