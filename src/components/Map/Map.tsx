@@ -9,7 +9,7 @@ import turfCentroid from '@turf/centroid';
 
 import DeckGL from '@deck.gl/react'
 
-import { generateGeohashes, valueGeneratorGenerator } from '../../data'
+import { generateGeohashes, generatePoints, valueGeneratorGenerator } from '../../data'
 
 import GeohashLayer from '../GeohashLayer/GeohashLayer'
 import Toolbar from '../ToolBar'
@@ -20,7 +20,7 @@ import BasemapLayers from './BaseMaps'
 
 import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
-import { RGBAColor, TextLayer } from 'deck.gl';
+import { RGBAColor, ScatterplotLayer, TextLayer } from 'deck.gl';
 import NAIControl from '../NAIControl';
 
 function hex2rgb(hex: string) {
@@ -112,6 +112,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     });
 
     const [geohashData, setGeohashData] = useState([])
+    const [pointData, setPointData] = useState([])
 
     const [editingFeatures, setEditingFeatures] = useState<NAIEditing>({
         name: null,
@@ -233,17 +234,24 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         const polygon = getViewBoundsClipped(viewStates.mainmap)
         setViewBoundsPolygon(polygon)
 
+        const viewBbox = [
+            Math.min(...polygon.map(([_, x]) => x)),
+            Math.min(...polygon.map(([x, _]) => x)),
+            Math.max(...polygon.map(([_, x]) => x)),
+            Math.max(...polygon.map(([x, _]) => x))
+        ]
+
         const geohashes = generateGeohashes(
             viewStates.mainmap.zoom,
-            [
-                Math.min(...polygon.map(([_, x]) => x)),
-                Math.min(...polygon.map(([x, _]) => x)),
-                Math.max(...polygon.map(([_, x]) => x)),
-                Math.max(...polygon.map(([x, _]) => x))
-            ]
+            viewBbox
         )
 
+        const points = generatePoints(viewBbox)
+        console.log(points)
+
         setGeohashData(geohashes.map(x => ({ geohash: x, value: valueGenerator() })))
+
+        setPointData(points)
     }, [viewStates, valueGenerator])
 
     const onLayerClick = (info) => {
@@ -332,6 +340,18 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         getElevation: d => d.value * 100
     })
 
+    const pointLayer = new ScatterplotLayer({
+        id: 'point-layer',
+        data: pointData,
+        pickable: true,
+        filled: true,
+        opacity: 0.3,
+        radiusMinPixels: 5,
+        radiusMaxPixels: 100,
+        lineWidthMinPixels: 1,
+        getPosition: (x: any) => x
+    })
+
     const viewBoxPolygonLayer = new PolygonLayer({
         id: 'polygon-layer',
         data: [{ polygon: viewBoundsPolygon }],
@@ -348,6 +368,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const layers = [
         ...BasemapLayers,
         geohashLayer,
+        pointLayer,
         viewBoxPolygonLayer,
         editableGeoJsonLayer,
         geoJsonNamesLayer

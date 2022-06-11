@@ -72,6 +72,21 @@ export const generateGeohashes = (zoom: number, boundingbox: number[]) => {
     return geohashes
 }
 
+export const generatePoints = (boundingbox: number[], numPoints: number = 1000) => {
+    let count = 0
+    let points = []
+    const [s, w, n, e] = boundingbox
+    const latDiff = n - s
+    const lonDiff = e - w
+    while (count < numPoints) {
+        const lat = Math.random() * latDiff + s
+        const lon = Math.random() * lonDiff + w
+        points.push([lon, lat])
+        count++
+    }
+    return points
+}
+
 // export const getValueForGeohash(rand: (seed: string) => number) => (geohash: string) => {
 //     return geohash.split('').reduce((acc, x) => {
 //         rand(x)
