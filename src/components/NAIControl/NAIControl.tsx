@@ -7,6 +7,7 @@ interface NAIControlProps {
     onDeleteFeature: (i: number) => void
     onEditFeatureName: (i: number, name: string) => void
     onEditFeatureCollectionName: (name: string) => void
+    onFlyToFeature: (i?: number) => void
 }
 
 const NAIControl = ({ 
@@ -14,13 +15,17 @@ const NAIControl = ({
     onToggleSelectFeature,
     onDeleteFeature,
     onEditFeatureName,
-    onEditFeatureCollectionName
+    onEditFeatureCollectionName,
+    onFlyToFeature
 }: NAIControlProps) => {
     return (
         <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
             <div>
                 <input type="text" value={ editingFeatures.name || "New NAI" }
                     onChange={ (e) => onEditFeatureCollectionName(e.target.value) }/>
+                <span onClick={() => onFlyToFeature()}
+                                title="fly to"
+                                style={{ cursor: 'pointer' }}>O</span>
                 <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
                     {editingFeatures.featureCollection.features.map((x, i) => {
                         return (
@@ -33,6 +38,9 @@ const NAIControl = ({
                                 <span onClick={() => onDeleteFeature(i)}
                                     title="delete"
                                     style={{ cursor: 'pointer' }}>X</span>
+                                <span onClick={() => onFlyToFeature(i)}
+                                    title="fly to"
+                                    style={{ cursor: 'pointer' }}>O</span>
                             </li>
                         )
                     })}

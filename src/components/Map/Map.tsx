@@ -6,6 +6,8 @@ import { MapView, MapController } from '@deck.gl/core'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
 import turfCentroid from '@turf/centroid';
+import bbox from '@turf/bbox'
+import * as d3 from 'd3'
 
 import DeckGL from '@deck.gl/react'
 
@@ -20,8 +22,9 @@ import BasemapLayers from './BaseMaps'
 
 import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
-import { RGBAColor, ScatterplotLayer, TextLayer } from 'deck.gl';
+import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
+import LayerControl from '../LayerControl';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -39,6 +42,20 @@ const INITIAL_VIEW_STATE = {
 const EMPTY_FEATURE_COLLECTION: NAIFeatureCollection = {
     type: 'FeatureCollection',
     features: [],
+}
+
+const transitions : Record<string, any> = {
+    getColors: {
+        duration: 300,
+        easing: d3.easeCubicInOut,
+        enter: value => [value[0], value[1], value[2], 0] // fade in
+    },
+    getRadius: {
+        type: 'spring',
+        stiffness: 0.01,
+        damping: 0.15,
+        enter: value => [0] // grow from size 0
+    }
 }
 
 // this is fun but not useful to have lots 
@@ -105,6 +122,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const [perspectiveEnabled, setPerspectiveEnabled] = useState(true)
 
     const [featureNamesVisible, setFeatureNamesVisible] = useState(true)
+
+    const [geohashLayerConfig, setGeohashLayerConfig] = useState({})
 
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
@@ -215,6 +234,34 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         })
     }, [editingFeatures])
 
+    const handleFlyToFeature = useCallback((i?: number) => {
+        setViewStates(currentViewStates => {
+            
+            const feature = (i !== undefined && i !== null) ? editingFeatures.featureCollection.features[i] : editingFeatures.featureCollection
+            const [minLng, minLat, maxLng, maxLat] = bbox(feature); // Turf.js
+            const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            const viewBounds = viewport.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+                padding: 50
+            })
+
+            return {
+                ...currentViewStates,
+                mainmap: {
+                    ...currentViewStates.mainmap,
+                    zoom: viewBounds.zoom,
+                    // @ts-expect-error  viewport does have latitude
+                    latitude: viewBounds.latitude,
+                    // @ts-expect-error  viewport does have longitude
+                    longitude: viewBounds.longitude,
+                    pitch: 0,
+                    bearing: 0,
+                    transitionDuration: 1500,
+                    transitionInterpolator: new FlyToInterpolator()
+                }
+            }
+        })
+    }, [editingFeatures])
+
     const handleToggleSelectFeature = useCallback((i) => {
         const { selectedFeatureIndexes } = editingFeatures
         if (selectedFeatureIndexes.includes(i)) {
@@ -292,7 +339,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     };
 
     const editableGeoJsonLayer = new EditableGeoJsonLayer({
-        id: 'geojsonEditor',
+        id: 'geojson-editor-layer',
         data: editingFeatures.featureCollection,
         selectedFeatureIndexes: editingFeatures.selectedFeatureIndexes,
         mode: editor.mode?.handler,
@@ -319,7 +366,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             }
         })
     const geoJsonNamesLayer = new TextLayer({
-        id: 'geojsonNames',
+        id: 'geojson-names-layer',
         visible: featureNamesVisible,
         data: geoJsonNames,
         parameters: {
@@ -333,11 +380,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         pickable: true,
         wireframe: false,
         filled: true,
-        extruded: true,
-        opacity: 0.3,
+        ...geohashLayerConfig,
         getGeohash: d => d.geohash,
         getFillColor: d => [d.value * 255, (1 - d.value) * 255, (1 - d.value) * 128],
-        getElevation: d => d.value * 100
+        getElevation: d => d.value * 100,
+        transitions
     })
 
     const pointLayer = new ScatterplotLayer({
@@ -349,7 +396,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         radiusMinPixels: 5,
         radiusMaxPixels: 100,
         lineWidthMinPixels: 1,
-        getPosition: (x: any) => x
+        getPosition: (x: any) => [x.coordinates[0], x.coordinates[1], 10],
+        transitions
     })
 
     const viewBoxPolygonLayer = new PolygonLayer({
@@ -373,8 +421,6 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         editableGeoJsonLayer,
         geoJsonNamesLayer
     ]
-
-    
 
     const layerFilter = useCallback(({ layer, viewport }) => {
         if (viewport.id === 'minimap' && layer.id === 'basemap-minimap') {
@@ -412,15 +458,15 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }
     }, []);
 
+    const getTooltip = (data: any) => {
+        return data.object?.name
+    }
+
     const onSwitchMode = (id) => {
         onEditorUpdated({
             mode: getEditMode(id)
         })
     };
-
-    const onToggleFeatureNamesVisible = () => {
-        setFeatureNamesVisible(x => !x)
-    }
 
     return (
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
@@ -436,23 +482,28 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 onClick={onLayerClick}
                 height="100%"
                 width="100%"
-                onHover={(info) => setCursorCoordiantes(info.coordinate)} />
+                onHover={(info) => setCursorCoordiantes(info.coordinate)} 
+                getTooltip={ getTooltip }/>
             <Toolbar editor={editor}
                 perspectiveEnabled={perspectiveEnabled}
                 featureNamesVisible={featureNamesVisible}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds}
                 onTogglePerspective={onTogglePerspective}
-                onToggleFeatureNamesVisible={onToggleFeatureNamesVisible}/>
+                onToggleFeatureNamesVisible={() => setFeatureNamesVisible(x => !x)}/>
             <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888' }}>
                 {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
             </div>
-            <NAIControl 
+            <NAIControl
                 editingFeatures={ editingFeatures }
                 onDeleteFeature={ handleDeleteFeature }
                 onToggleSelectFeature={ handleToggleSelectFeature }
                 onEditFeatureName={ handleEditFeatureName }
-                onEditFeatureCollectionName={ handleEditFeatureCollectionName }/>
+                onEditFeatureCollectionName={ handleEditFeatureCollectionName }
+                onFlyToFeature={ handleFlyToFeature }/>
+            <LayerControl
+                layerConfig={ geohashLayerConfig }
+                onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
         </div>
     )
 }

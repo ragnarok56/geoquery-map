@@ -12,9 +12,17 @@ interface ToolbarProps {
     onToggleFeatureNamesVisible: () => void
 }
 
-const Toolbar = ({ editor, perspectiveEnabled, featureNamesVisible, onRefresh, onSetMode, onTogglePerspective, onToggleFeatureNamesVisible }: ToolbarProps) => {
+const Toolbar = ({ 
+    editor,
+    perspectiveEnabled,
+    featureNamesVisible,
+    onRefresh,
+    onSetMode,
+    onTogglePerspective,
+    onToggleFeatureNamesVisible,
+}: ToolbarProps) => {
     return (
-        <div style={{ position: 'absolute', padding: '10px', margin: '50px', top: 0, left: 0, background: "#888", width: '200px' }}>
+        <div style={{ position: 'absolute', padding: '5px', margin: '10px', top: 0, left: 0, background: "#888", width: '200px' }}>
             <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333" }}
                 onClick={onRefresh}>
                 <span>"Refresh"</span>
@@ -24,7 +32,7 @@ const Toolbar = ({ editor, perspectiveEnabled, featureNamesVisible, onRefresh, o
                 <span>{ perspectiveEnabled ? 'Exit the 3rd Dimension' : 'Enter the 3rd Dimension' }</span>
             </div>
 
-            <h4 style={ { marginBottom: '5px' } }>Edit Mode</h4>
+            <h4 style={ { margin: 0 } }>Edit Mode</h4>
             <ul style={ { listStyle: 'none', textAlign: 'left', padding: 0, margin: 0, marginBottom: '10px' } }>
                 { MODES.map((mode) => (
                     <li key={ mode.id } value={ mode.id } 
