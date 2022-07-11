@@ -25,6 +25,7 @@ import { getEditMode } from '../../utils/editing';
 import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
 import LayerControl from '../LayerControl';
+import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -294,7 +295,6 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         )
 
         const points = generatePoints(viewBbox)
-        console.log(points)
 
         setGeohashData(geohashes.map(x => ({ geohash: x, value: valueGenerator() })))
 
@@ -335,6 +335,10 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 featureCollection: updatedData,
                 selectedFeatureIndexes: updatedSelectedFeatureIndexes,
             });
+
+            onEditorUpdated({
+                mode: getEditMode('view')
+            })
         }
     };
 
@@ -501,7 +505,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 onEditFeatureName={ handleEditFeatureName }
                 onEditFeatureCollectionName={ handleEditFeatureCollectionName }
                 onFlyToFeature={ handleFlyToFeature }/>
-            <LayerControl
+            <GeohashLayerControl
                 layerConfig={ geohashLayerConfig }
                 onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
         </div>

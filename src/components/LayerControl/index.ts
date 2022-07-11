@@ -1,1 +1,3 @@
-export { default } from './LayerControl'
+import GeohashLayerControl from './GeohashLayerControl'
+
+export default { GeohashLayerControl }
