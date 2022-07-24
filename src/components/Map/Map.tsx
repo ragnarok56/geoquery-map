@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { ViewMode } from "@nebula.gl/edit-modes";
 import { PolygonLayer } from '@deck.gl/layers'
-import { MapView, MapController } from '@deck.gl/core'
+import { MapView, MapController } from '@deck.gl/core/typed'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
 import turfCentroid from '@turf/centroid';
@@ -13,7 +13,7 @@ import DeckGL from '@deck.gl/react'
 
 import { generateGeohashes, generatePoints, valueGeneratorGenerator } from '../../data'
 
-import GeohashLayer from '../GeohashLayer/GeohashLayer'
+import { GeohashLayer } from '@deck.gl/geo-layers/typed'
 import Toolbar from '../ToolBar'
 
 import { getViewBoundsClipped } from '../../utils/view'
@@ -476,11 +476,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
                 layerFilter={layerFilter}
+                // @ts-expect-error
                 layers={layers}
+                // @ts-expect-error
                 views={VIEWS}
                 // @ts-expect-error - this can an object of viewstates
                 viewState={viewStates}
-                getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
+                // getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
                 // @ts-expect-error - not typed correctly, missing viewId prop
                 onViewStateChange={onViewStateChange}
                 onClick={onLayerClick}
