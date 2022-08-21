@@ -342,6 +342,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }
     };
 
+    // @ts-ignore
     const editableGeoJsonLayer = new EditableGeoJsonLayer({
         id: 'geojson-editor-layer',
         data: editingFeatures.featureCollection,

@@ -1,4 +1,4 @@
-import { TileLayer, BitmapLayer } from "deck.gl";
+import { TileLayer, BitmapLayer, COORDINATE_SYSTEM } from "deck.gl";
 import { load } from '@loaders.gl/core'
 
 
@@ -17,6 +17,7 @@ const mainBasemapMercator = new TileLayer({
       return new BitmapLayer(props, {
         data: null,
         image: props.data,
+        _imageCoordinateSystem: COORDINATE_SYSTEM.LNGLAT,
         bounds: [west, south, east, north]
       });
     }
