@@ -22,7 +22,7 @@ import BasemapLayers from './BaseMaps'
 
 import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
-import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
+import { FlyToInterpolator, OrbitView, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
 import LayerControl from '../LayerControl';
 import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
@@ -37,7 +37,8 @@ const INITIAL_VIEW_STATE = {
     longitude: 0,
     zoom: 1,
     bearing: 0,
-    pitch: 0
+    pitch: 0,
+    target: [0, 0, 0]
 }
 
 const EMPTY_FEATURE_COLLECTION: NAIFeatureCollection = {
@@ -143,14 +144,28 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
 
     const VIEWS = [
-        new MapView({
+         new OrbitView({
             id: 'mainmap',
+            // fovy: 45,
+            // near: 0.1,
+            // far: 15000,
+            // focalDistance: 1.5,
+            // orbitAxis: 'Z',
             controller: {
                 type: MapController,
                 doubleClickZoom: false,
                 dragRotate: perspectiveEnabled
             }
-        }),
+        })
+        // default mercator view
+        // new MapView({
+        //     id: 'mainmap',
+        //     controller: {
+        //         type: MapController,
+        //         doubleClickZoom: false,
+        //         dragRotate: perspectiveEnabled
+        //     }
+        // }),
         // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
         // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
         // and the nebula stuff for editing since its all baked in to react-map-gl MapContext which doesnt appear to 
@@ -418,7 +433,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     })
 
     const layers = [
-        ...BasemapLayers,
+        BasemapLayers[0],
         geohashLayer,
         pointLayer,
         viewBoxPolygonLayer,
