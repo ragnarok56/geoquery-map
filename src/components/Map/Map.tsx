@@ -26,6 +26,8 @@ import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorV
 import NAIControl from '../NAIControl';
 import LayerControl from '../LayerControl';
 import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
+import WGS84Viewport from './WGS84Viewport';
+import WGS84MapView from './WGS84MapView';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -143,7 +145,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
 
     const VIEWS = [
-        new MapView({
+        new WGS84MapView({
             id: 'mainmap',
             controller: {
                 type: MapController,
@@ -240,7 +242,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             
             const feature = (i !== undefined && i !== null) ? editingFeatures.featureCollection.features[i] : editingFeatures.featureCollection
             const [minLng, minLat, maxLng, maxLat] = bbox(feature); // Turf.js
-            const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            // const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            const viewport = new WGS84Viewport(currentViewStates.mainmap);
             const viewBounds = viewport.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
                 padding: 50
             })
@@ -250,9 +253,9 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 mainmap: {
                     ...currentViewStates.mainmap,
                     zoom: viewBounds.zoom,
-                    // @ts-expect-error  viewport does have latitude
+                    // @ts-ignore  viewport does have latitude
                     latitude: viewBounds.latitude,
-                    // @ts-expect-error  viewport does have longitude
+                    // @ts-ignore viewport does have longitude
                     longitude: viewBounds.longitude,
                     pitch: 0,
                     bearing: 0,
@@ -479,7 +482,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 layerFilter={layerFilter}
                 // @ts-expect-error
                 layers={layers}
-                // @ts-expect-error
+                // @ts-ignore
                 views={VIEWS}
                 // @ts-expect-error - this can an object of viewstates
                 viewState={viewStates}

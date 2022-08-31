@@ -23,16 +23,16 @@
 // map view properties
 import { Viewport } from '@deck.gl/core';
 
-import {
+ import {
   pixelsToWorld,
   getViewMatrix,
   addMetersToLngLat,
   getProjectionParameters,
-  altitudeToFovy,
-  fovyToAltitude,
-  fitBounds,
+   altitudeToFovy,
+   fovyToAltitude,
+   fitBounds,
   getBounds
-} from '@math.gl/web-mercator';
+ } from '@math.gl/web-mercator';
 
 // TODO - import from math.gl
 import * as vec2 from 'gl-matrix/vec2';
@@ -41,6 +41,51 @@ import {Matrix4} from '@math.gl/core';
 const TILE_SIZE = 512;
 const EARTH_CIRCUMFERENCE = 40.03e6;
 const DEGREES_TO_RADIANS = Math.PI / 180;
+
+function getOrbitViewMatrix({
+    height,
+    focalDistance,
+    orbitAxis,
+    rotationX,
+    rotationOrbit,
+    zoom
+  }: {
+    height: number;
+    focalDistance: number;
+    orbitAxis: 'Y' | 'Z';
+    rotationX: number;
+    rotationOrbit: number;
+    zoom: number;
+  }): Matrix4 {
+    // We position the camera so that one common space unit (world space unit scaled by zoom)
+    // at the target maps to one screen pixel.
+    // This is a similar technique to that used in web mercator projection
+    // By doing so we are able to convert between common space and screen space sizes efficiently
+    // in the vertex shader.
+    const up = orbitAxis === 'Z' ? [0, 0, 1] : [0, 1, 0];
+    const eye = orbitAxis === 'Z' ? [0, -focalDistance, 0] : [0, 0, focalDistance];
+    const center = [0, 0, 0]
+    
+    // @ts-ignore
+    const viewMatrix = new Matrix4().lookAt({eye, center, up});
+  
+    viewMatrix.rotateX(rotationX * DEGREES_TO_RADIANS);
+    if (orbitAxis === 'Z') {
+      viewMatrix.rotateZ(rotationOrbit * DEGREES_TO_RADIANS);
+    } else {
+      viewMatrix.rotateY(rotationOrbit * DEGREES_TO_RADIANS);
+    }
+  
+    // When height increases, we need to increase the distance from the camera to the target to
+    // keep the 1:1 mapping. However, this also changes the projected depth of each position by
+    // moving them further away between the near/far plane.
+    // Without modifying the default near/far planes, we instead scale down the common space to
+    // remove the distortion to the depth field.
+    const projectionScale = Math.pow(2, zoom) / height;
+    viewMatrix.scale(projectionScale);
+  
+    return viewMatrix;
+  }
 
 export type WGS84ViewportOptions = {
   /** Name of the viewport */
@@ -178,6 +223,22 @@ export default class WGS84Viewport extends Viewport {
       const viewOffset = new Matrix4().translate([512 * worldOffset, 0, 0]);
       viewMatrixUncentered = viewOffset.multiplyLeft(viewMatrixUncentered);
     }
+    // fovy = 50
+    const orbitAxis = 'Z'
+    const focalDistance = projectionMatrix ? projectionMatrix[5] / 2 : fovyToAltitude(fovy);
+
+    const rotationX = 0 // Rotating angle around X axis
+    const rotationOrbit = 0 // Rotating angle around orbit axis
+
+    const orbitViewMatrix = getOrbitViewMatrix({height: height || 1,
+        focalDistance,
+        orbitAxis,
+        rotationX,
+        rotationOrbit,
+        zoom
+    })
+
+    console.log(viewMatrixUncentered, orbitViewMatrix)
 
     super({
       ...opts,
@@ -187,14 +248,23 @@ export default class WGS84Viewport extends Viewport {
 
       // view matrix
       viewMatrix: viewMatrixUncentered,
+    //   viewMatrix: getOrbitViewMatrix({
+    //     height: height || 1,
+    //     focalDistance,
+    //     orbitAxis,
+    //     rotationX,
+    //     rotationOrbit,
+    //     zoom
+    //   }),
       longitude,
       latitude,
       zoom,
 
       // projection matrix parameters
-      ...projectionParameters,
-      fovy,
-      focalDistance: altitude
+      //   ...projectionParameters,
+      //fovy,
+      focalDistance: altitude,
+      orthographic
     });
 
     // Save parameters
@@ -211,6 +281,8 @@ export default class WGS84Viewport extends Viewport {
     this._subViewports = repeat ? [] : null;
 
     Object.freeze(this);
+
+    console.log(this)
   }
   /* eslint-enable complexity, max-statements */
 
@@ -264,14 +336,11 @@ export default class WGS84Viewport extends Viewport {
 //   }
 
   panByPosition(coords: number[], pixel: number[]): WGS84ViewportOptions {
-    const fromLocation = pixelsToWorld(pixel, this.pixelUnprojectionMatrix);
-    const toLocation = this.projectFlat(coords);
-
-    const translate = vec2.add([], toLocation, vec2.negate([], fromLocation));
-    const newCenter = vec2.add([], this.center, translate);
-
-    const [longitude, latitude] = this.unprojectFlat(newCenter);
-    return {longitude, latitude};
+    const fromPosition = this.unproject(pixel);
+    return {
+      longitude: coords[0] - fromPosition[0] + this.longitude,
+      latitude: coords[1] - fromPosition[1] + this.latitude
+    };
   }
 
   getBounds(options: {z?: number} = {}): [number, number, number, number] {
@@ -297,7 +366,14 @@ export default class WGS84Viewport extends Viewport {
    */
   fitBounds(bounds: [[number, number], [number, number]], options = {}) {
     const {width, height} = this;
-    const {longitude, latitude, zoom} = fitBounds({width, height, bounds, ...options});
+
+    const [[west, south], [east, north]] = bounds
+    const longitude = (east + west) / 2
+    const latitude  = (north + south) / 2
+
+    // just call the web mercator version of this for now to get zoom level
+    // todo: replace?
+    const { zoom } = fitBounds({width, height, bounds, ...options})
     return new WGS84Viewport({width, height, longitude, latitude, zoom});
   }
 }
