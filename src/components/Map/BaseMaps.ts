@@ -1,6 +1,8 @@
 import { TileLayer, BitmapLayer, COORDINATE_SYSTEM } from "deck.gl";
 import { load } from '@loaders.gl/core'
 
+import WMSTileset2D from './WMSTileset2D'
+
 
 const mainBasemapMercator = new TileLayer({
     id: 'basemap-mainmap',
@@ -34,10 +36,14 @@ function tileToBoundingBox(tile: any, tileSize: number) {
     return [south, west, north, east]
 }
 
+// @ts-ignore
 const mainBasemapWGS84 = new TileLayer({
     id: 'basemap-mainmap',
+    // @ts-ignore
+    TilesetClass: WMSTileset2D,
     getTileData: (tile) => {
-        const tileSize = 256
+        const tileSize = 512
+        console.log('tile:', tile)
         const {east, north, south, west} = tile.bbox
         // const [south, west, north, east] = tileToBoundingBox(tile, tileSize)
         const urlQueryStringParams = {
@@ -58,7 +64,7 @@ const mainBasemapWGS84 = new TileLayer({
     },
     minZoom: 0,
     maxZoom: 19,
-    tileSize: 256,
+    tileSize: 512,
 
     renderSubLayers: props => {
       const {
@@ -95,8 +101,7 @@ const miniBasemap = new TileLayer({
   })
 
 const basemapLayers = [
-    mainBasemapWGS84,
-    miniBasemap
+    mainBasemapWGS84
 ]
 
 export default basemapLayers

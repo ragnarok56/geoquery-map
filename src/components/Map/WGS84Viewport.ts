@@ -132,17 +132,19 @@ export type WGS84ViewportOptions = {
   legacyMeterSizes?: boolean;
 };
 
-function unitsPerMeter(latitude: number): number {
-  const latCosine = Math.cos(latitude * DEGREES_TO_RADIANS);
-  return TILE_SIZE / EARTH_CIRCUMFERENCE / latCosine;
-}
-
-function latLonToPixels(latitude: number, longitude: number, zoom: number) {
-    const res = 180 / 256.0 / 2 ** zoom
-    const x = (180 + latitude) / res
-    const y = (90 + longitude) / res
-    return [x, y]
-}
+function getDistanceScales() {
+    const unitsPerMeter = 1;
+    const unitsPerDegree = 1;//(Math.PI / 180) * 256;
+  
+    return {
+      unitsPerMeter: [unitsPerMeter, unitsPerMeter, unitsPerMeter],
+      unitsPerMeter2: [0, 0, 0],
+      metersPerUnit: [1 / unitsPerMeter, 1 / unitsPerMeter, 1 / unitsPerMeter],
+      unitsPerDegree: [unitsPerDegree, unitsPerDegree, unitsPerMeter],
+      unitsPerDegree2: [0, 0, 0],
+      degreesPerUnit: [1 / unitsPerDegree, 1 / unitsPerDegree, 1 / unitsPerMeter]
+    };
+  }
 
 /**
  * Manages transformations to/from WGS84 coordinates using the Web Mercator Projection.
@@ -163,6 +165,7 @@ export default class WGS84Viewport extends Viewport {
 
   /* eslint-disable complexity, max-statements */
   constructor(opts: WGS84ViewportOptions = {}) {
+    console.log('opts', opts)
     const {
       latitude = 0,
       longitude = 0,
@@ -219,26 +222,26 @@ export default class WGS84Viewport extends Viewport {
       altitude
     });
 
-    if (worldOffset) {
-      const viewOffset = new Matrix4().translate([512 * worldOffset, 0, 0]);
-      viewMatrixUncentered = viewOffset.multiplyLeft(viewMatrixUncentered);
-    }
+    // if (worldOffset) {
+    //   const viewOffset = new Matrix4().translate([512 * worldOffset, 0, 0]);
+    //   viewMatrixUncentered = viewOffset.multiplyLeft(viewMatrixUncentered);
+    // }
     // fovy = 50
-    const orbitAxis = 'Z'
-    const focalDistance = projectionMatrix ? projectionMatrix[5] / 2 : fovyToAltitude(fovy);
+    // const orbitAxis = 'Z'
+    // const focalDistance = projectionMatrix ? projectionMatrix[5] / 2 : fovyToAltitude(fovy);
 
-    const rotationX = 0 // Rotating angle around X axis
-    const rotationOrbit = 0 // Rotating angle around orbit axis
+    // const rotationX = 0 // Rotating angle around X axis
+    // const rotationOrbit = 0 // Rotating angle around orbit axis
 
-    const orbitViewMatrix = getOrbitViewMatrix({height: height || 1,
-        focalDistance,
-        orbitAxis,
-        rotationX,
-        rotationOrbit,
-        zoom
-    })
+    // const orbitViewMatrix = getOrbitViewMatrix({height: height || 1,
+    //     focalDistance,
+    //     orbitAxis,
+    //     rotationX,
+    //     rotationOrbit,
+    //     zoom
+    // })
 
-    console.log(viewMatrixUncentered, orbitViewMatrix)
+    console.log(viewMatrixUncentered)
 
     super({
       ...opts,
@@ -248,6 +251,7 @@ export default class WGS84Viewport extends Viewport {
 
       // view matrix
       viewMatrix: viewMatrixUncentered,
+      projectionMatrix: null,
     //   viewMatrix: getOrbitViewMatrix({
     //     height: height || 1,
     //     focalDistance,
@@ -264,8 +268,11 @@ export default class WGS84Viewport extends Viewport {
       //   ...projectionParameters,
       //fovy,
       focalDistance: altitude,
-      orthographic
+      orthographic,
+      distanceScales: getDistanceScales()
     });
+    // @ts-ignore
+    console.log(this.center, this.projectionMatrix)
 
     // Save parameters
     this.latitude = latitude;
@@ -283,13 +290,18 @@ export default class WGS84Viewport extends Viewport {
     Object.freeze(this);
 
     console.log(this)
+    const center = this.project([0,0])
+    const centerUnprojected = this.unproject(center)
+    console.log(center, centerUnprojected)
   }
   /* eslint-enable complexity, max-statements */
 
   get subViewports(): WGS84Viewport[] | null {
     if (this._subViewports && !this._subViewports.length) {
       // Cache sub viewports so that we only calculate them once
-      const bounds = this.getBounds();
+      // this.
+      // @ts-ignore
+      const bounds = this.getBounds()
 
       const minOffset = Math.floor((bounds[0] + 180) / 360);
       const maxOffset = Math.ceil((bounds[2] - 180) / 360);
@@ -311,14 +323,14 @@ export default class WGS84Viewport extends Viewport {
     // const [X, Y] = this.projectFlat(xyz);
     // const Z = (xyz[2] || 0) * unitsPerMeter(xyz[1]);
     // return [X, Y, Z];
-    return [xyz[0], xyz[1], xyz[2]]
+    return [xyz[1], xyz[0], xyz[2]]
   }
 
   unprojectPosition(xyz: number[]): [number, number, number] {
     // const [X, Y] = this.unprojectFlat(xyz);
     // const Z = (xyz[2] || 0) / unitsPerMeter(Y);
     // return [X, Y, Z];
-    return [xyz[0], xyz[1], xyz[2]]
+    return [xyz[1], xyz[0], xyz[2]]
   }
 
 //   /**
@@ -343,17 +355,17 @@ export default class WGS84Viewport extends Viewport {
     };
   }
 
-  getBounds(options: {z?: number} = {}): [number, number, number, number] {
-    // @ts-ignore
-    const corners = getBounds(this, options.z || 0);
+//   getBounds(options: {z?: number} = {}): [number, number, number, number] {
+//     // @ts-ignore
+//     const corners = getBounds(this, options.z || 0);
 
-    return [
-      Math.min(corners[0][0], corners[1][0], corners[2][0], corners[3][0]),
-      Math.min(corners[0][1], corners[1][1], corners[2][1], corners[3][1]),
-      Math.max(corners[0][0], corners[1][0], corners[2][0], corners[3][0]),
-      Math.max(corners[0][1], corners[1][1], corners[2][1], corners[3][1])
-    ];
-  }
+//     return [
+//       Math.min(corners[0][0], corners[1][0], corners[2][0], corners[3][0]),
+//       Math.min(corners[0][1], corners[1][1], corners[2][1], corners[3][1]),
+//       Math.max(corners[0][0], corners[1][0], corners[2][0], corners[3][0]),
+//       Math.max(corners[0][1], corners[1][1], corners[2][1], corners[3][1])
+//     ];
+//   }
 
   /**
    * Returns a new viewport that fit around the given rectangle.
