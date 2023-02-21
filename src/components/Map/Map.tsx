@@ -145,13 +145,14 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     const valueGenerator = useMemo(() => valueGeneratorGenerator(seed), [seed])
 
     const VIEWS = [
-        new WGS84MapView({
+        new MapView({
             id: 'mainmap',
             controller: {
                 type: MapController,
                 doubleClickZoom: false,
                 dragRotate: perspectiveEnabled
-            }
+            },
+            repeat: true
         }),
         // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
         // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
@@ -404,7 +405,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         radiusMinPixels: 5,
         radiusMaxPixels: 100,
         lineWidthMinPixels: 1,
-        getPosition: (x: any) => [x.coordinates[0], x.coordinates[1], 10],
+        getPosition: (x: any) => [x.coordinates[0], x.coordinates[1], x.altitude],
         transitions
     })
 
