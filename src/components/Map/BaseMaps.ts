@@ -40,7 +40,8 @@ function tileToBoundingBox(tile: any, tileSize: number) {
 const mainBasemapWGS84 = new TileLayer({
     id: 'basemap-mainmap',
     // @ts-ignore
-    TilesetClass: WMSTileset2D,
+    // TilesetClass: WMSTileset2D,
+    // TilesetClass: Tilese
     getTileData: (tile) => {
         const tileSize = 512
         console.log('tile:', tile)
@@ -48,15 +49,16 @@ const mainBasemapWGS84 = new TileLayer({
         // const [south, west, north, east] = tileToBoundingBox(tile, tileSize)
         const urlQueryStringParams = {
             SERVICE: 'WMS',
-            VERSION: '1.3.0',
+            VERSION: '1.1.1',
             REQUEST: 'GetMap',
             LAYERS: 'ne:NE1_HR_LC_SR_W_DR',
             TILED: 'true',
-            bbox: [south, west, north, east].join(','),
+            // bbox: [south, west, north, east].join(','),
+            bbox: [west, south, east, north].join(','),
             format: 'image/png',
             height: tileSize,
             width: tileSize,
-            crs: 'EPSG:4326'
+            srs: 'EPSG:4326'
         }
         const urlQueryString = Object.keys(urlQueryStringParams).map(key => key + '=' + urlQueryStringParams[key]).join('&');
         const url = 'https://ahocevar.com/geoserver/wms'
@@ -74,6 +76,7 @@ const mainBasemapWGS84 = new TileLayer({
       return new BitmapLayer(props, {
         data: null,
         image: props.data,
+        _imageCoordinateSystem: COORDINATE_SYSTEM.LNGLAT,
         bounds: [west, south, east, north]
       });
     }
