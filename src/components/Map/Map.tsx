@@ -28,6 +28,7 @@ import LayerControl from '../LayerControl';
 import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
 import WGS84Viewport from './WGS84Viewport';
 import WGS84MapView from './WGS84MapView';
+import OrthographicViewport from './OrthographicViewport';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -242,8 +243,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             
             const feature = (i !== undefined && i !== null) ? editingFeatures.featureCollection.features[i] : editingFeatures.featureCollection
             const [minLng, minLat, maxLng, maxLat] = bbox(feature); // Turf.js
-            // const viewport = new WebMercatorViewport(currentViewStates.mainmap);
-            const viewport = new WGS84Viewport(currentViewStates.mainmap);
+            //const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            //const viewport = new WGS84Viewport(currentViewStates.mainmap);
+            const viewport = new OrthographicViewport(currentViewStates.mainmap);
+            //console.log(viewport)
+            //@ts-ignore
             const viewBounds = viewport.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
                 padding: 50
             })

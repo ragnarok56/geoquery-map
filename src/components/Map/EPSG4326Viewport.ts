@@ -151,6 +151,8 @@ export default class EPSG4326Viewport extends Viewport {
         altitude
         });
 
+        console.log('viewMatrixUncentered', viewMatrixUncentered)
+
         super({
         ...opts,
         // x, y,
