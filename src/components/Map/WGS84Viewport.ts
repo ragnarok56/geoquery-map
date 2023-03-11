@@ -21,7 +21,7 @@
 
 // View and Projection Matrix calculations for mapbox-js style
 // map view properties
-import { Viewport } from '@deck.gl/core';
+import { Viewport } from '@deck.gl/core/typed';
 
  import {
   pixelsToWorld,
