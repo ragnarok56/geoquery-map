@@ -1,11 +1,13 @@
 import React from 'react'
-import { EditorState } from '../../types'
+import { BasemapLayer, EditorState } from '../../types'
 import { MODES } from '../../utils/editing'
+import BasemapLayers from '../Map/BaseMaps'
 
 interface ToolbarProps {
     editor: EditorState
     perspectiveEnabled: boolean
     featureNamesVisible: boolean
+    onSetBaseMap: (basemap: BasemapLayer) => void
     onRefresh: () => void
     onSetMode: (id: string) => void
     onTogglePerspective: () => void
@@ -17,6 +19,7 @@ const Toolbar = ({
     perspectiveEnabled,
     featureNamesVisible,
     onRefresh,
+    onSetBaseMap,
     onSetMode,
     onTogglePerspective,
     onToggleFeatureNamesVisible,
@@ -43,6 +46,17 @@ const Toolbar = ({
                 )) }
             </ul>
             
+            <h4 style={ { margin: 0 } }>BaseMap</h4>
+            <ul style={ { listStyle: 'none', textAlign: 'left', padding: 0, margin: 0, marginBottom: '10px' } }>
+                { BasemapLayers.map((basemap) => (
+                    <li key={ basemap.id } value={ basemap.id } 
+                        style={ { background: editor.basemap.id === basemap.id ? '#111' : '#333', cursor: 'pointer', padding: 3 } }
+                        onClick={ () => onSetBaseMap(basemap) }>
+                        { basemap.name }
+                    </li>
+                )) }
+            </ul>
+
             <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333", fontSize: 16 }}
                 onClick={onToggleFeatureNamesVisible}>
                 <span>{ featureNamesVisible ? 'Hide Feature Names' : 'Show Feature Names' }</span>

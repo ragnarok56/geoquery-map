@@ -1,35 +1,37 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useCallback, useMemo } from 'react'
 import { ViewMode } from "@nebula.gl/edit-modes";
-import { PolygonLayer } from '@deck.gl/layers'
-import { MapView, MapController } from '@deck.gl/core'
+import { PolygonLayer } from '@deck.gl/layers/typed'
+import { MapView, MapController } from '@deck.gl/core/typed'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
 import turfCentroid from '@turf/centroid';
 import bbox from '@turf/bbox'
 import * as d3 from 'd3'
 
-import DeckGL from '@deck.gl/react'
+import DeckGL from '@deck.gl/react/typed'
 
 import { generateGeohashes, generatePoints, valueGeneratorGenerator } from '../../data'
 
-import GeohashLayer from '../GeohashLayer/GeohashLayer'
+import { GeohashLayer } from '@deck.gl/geo-layers/typed'
 import Toolbar from '../ToolBar'
 
 import { getViewBoundsClipped } from '../../utils/view'
 
 import BasemapLayers from './BaseMaps'
 
-import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
+import { BasemapLayer, EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
 import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
 import LayerControl from '../LayerControl';
-import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
+import GeohashLayerControl, { colorDomains } from '../LayerControl/GeohashLayerControl';
+import WGS84Viewport from './WGS84Viewport';
+import WGS84MapView from './WGS84MapView';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
-    return [16, 8, 0].map((shift) => ((value >> shift) & 0xff) / 255);
+    return [16, 8, 0].map((shift) => ((value >> shift) & 0xff));
 }
 
 const INITIAL_VIEW_STATE = {
@@ -124,7 +126,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const [featureNamesVisible, setFeatureNamesVisible] = useState(true)
 
-    const [geohashLayerConfig, setGeohashLayerConfig] = useState({})
+    const [geohashLayerConfig, setGeohashLayerConfig] = useState({
+        extruded: false,
+        opacity: 0.5,
+        color: colorDomains[0]
+    })
 
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
@@ -149,7 +155,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 type: MapController,
                 doubleClickZoom: false,
                 dragRotate: perspectiveEnabled
-            }
+            },
+            repeat: true
         }),
         // this is commented out because otherwise editablegeojsonlayer uses _this_ viewport as the context for which
         // to get cursor events off of, which is why the lines end up all over the place.  not sure how to have multiple viewports
@@ -166,6 +173,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         // })
     ]
 
+    const onSetBaseMap = (basemap: BasemapLayer) => {
+        onEditorUpdated({
+            ...editor,
+            basemap
+        })
+    }
+
     const onTogglePerspective = () => {
         const updatedPerspective = !perspectiveEnabled
         setPerspectiveEnabled(updatedPerspective)
@@ -181,9 +195,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }));
     }
 
+    
+
     const _getDeckColorForFeature = (index: number, bright: number, alpha: number): RGBAColor => {
         const length = FEATURE_COLORS.length;
-        const color = FEATURE_COLORS[index % length].map((c) => c * bright * 255);
+        const color = FEATURE_COLORS[index % length].map((c) => c * bright);
 
         // @ts-ignore
         return [...color, alpha * 255];
@@ -241,6 +257,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             const feature = (i !== undefined && i !== null) ? editingFeatures.featureCollection.features[i] : editingFeatures.featureCollection
             const [minLng, minLat, maxLng, maxLat] = bbox(feature); // Turf.js
             const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            // const viewport = new WGS84Viewport(currentViewStates.mainmap);
             const viewBounds = viewport.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
                 padding: 50
             })
@@ -250,9 +267,9 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 mainmap: {
                     ...currentViewStates.mainmap,
                     zoom: viewBounds.zoom,
-                    // @ts-expect-error  viewport does have latitude
+                    // @ts-ignore  viewport does have latitude
                     latitude: viewBounds.latitude,
-                    // @ts-expect-error  viewport does have longitude
+                    // @ts-ignore viewport does have longitude
                     longitude: viewBounds.longitude,
                     pitch: 0,
                     bearing: 0,
@@ -337,11 +354,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             });
 
             onEditorUpdated({
+                ...editor,
                 mode: getEditMode('view')
             })
         }
     };
 
+    // @ts-ignore
     const editableGeoJsonLayer = new EditableGeoJsonLayer({
         id: 'geojson-editor-layer',
         data: editingFeatures.featureCollection,
@@ -369,6 +388,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 text: x.properties?.name
             }
         })
+
     const geoJsonNamesLayer = new TextLayer({
         id: 'geojson-names-layer',
         visible: featureNamesVisible,
@@ -378,6 +398,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }
     })
     
+    console.log(geohashLayerConfig)
+
     const geohashLayer = new GeohashLayer({
         id: 'geohash-layer',
         data: geohashData,
@@ -385,10 +407,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         wireframe: false,
         filled: true,
         ...geohashLayerConfig,
+        getFillColor: d => geohashLayerConfig.color.getFillColor(d),
         getGeohash: d => d.geohash,
-        getFillColor: d => [d.value * 255, (1 - d.value) * 255, (1 - d.value) * 128],
         getElevation: d => d.value * 100,
-        transitions
+        transitions,
+        updateTriggers: {
+            getFillColor: geohashLayerConfig.color,
+        },
     })
 
     const pointLayer = new ScatterplotLayer({
@@ -400,7 +425,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         radiusMinPixels: 5,
         radiusMaxPixels: 100,
         lineWidthMinPixels: 1,
-        getPosition: (x: any) => [x.coordinates[0], x.coordinates[1], 10],
+        getPosition: (x: any) => [x.coordinates[0], x.coordinates[1], x.altitude],
         transitions
     })
 
@@ -418,7 +443,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     })
 
     const layers = [
-        ...BasemapLayers,
+        editor.basemap.layer,
         geohashLayer,
         pointLayer,
         viewBoxPolygonLayer,
@@ -468,6 +493,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const onSwitchMode = (id) => {
         onEditorUpdated({
+            ...editor,
             mode: getEditMode(id)
         })
     };
@@ -476,12 +502,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
                 layerFilter={layerFilter}
+                // @ts-ignore
                 layers={layers}
                 views={VIEWS}
-                // @ts-expect-error - this can an object of viewstates
                 viewState={viewStates}
-                getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
-                // @ts-expect-error - not typed correctly, missing viewId prop
+                // getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
                 onViewStateChange={onViewStateChange}
                 onClick={onLayerClick}
                 height="100%"
@@ -491,6 +516,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             <Toolbar editor={editor}
                 perspectiveEnabled={perspectiveEnabled}
                 featureNamesVisible={featureNamesVisible}
+                onSetBaseMap={onSetBaseMap}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds}
                 onTogglePerspective={onTogglePerspective}

@@ -9,8 +9,8 @@
     "@types/react": "^18.0.9",
     "@types/react-dom": "^18.0.4",
     "d3": "^7.4.4",
-    "deck.gl": "^8.7.9",
-    "nebula.gl": "^1.0.2",
+    "deck.gl": "^8.8.0",
+    "nebula.gl": "^1.0.3",
     "ngeohash": "^0.6.3",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
@@ -24,7 +24,7 @@
     "**/@types/react": "18.0.9"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "GENERATE_SOURCEMAP=false react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -46,5 +46,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.16.5"
+  },
+  "jest": {
+    "moduleNameMapper": {
+        "d3": "<rootDir>/node_modules/d3/dist/d3.min.js"
+    }
   }
 }

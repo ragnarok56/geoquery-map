@@ -1,3 +1,4 @@
+import { Layer } from "@deck.gl/core/typed"
 
 export interface EditorMode {
     id: string
@@ -7,6 +8,7 @@ export interface EditorMode {
 
 export interface EditorState {
     mode?: EditorMode
+    basemap: BasemapLayer
 }
 
 export interface NAIFeatureProperties {
@@ -19,4 +21,10 @@ export interface NAIEditing {
     name?: string
     featureCollection: NAIFeatureCollection
     selectedFeatureIndexes: number[]
+}
+
+export interface BasemapLayer {
+    id: string
+    name: string
+    layer: Layer
 }

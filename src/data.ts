@@ -100,9 +100,11 @@ export const generatePoints = (boundingbox: number[], numPoints: number = 1000) 
     while (count < numPoints) {
         const lat = Math.random() * latDiff + s
         const lon = Math.random() * lonDiff + w
+        const altitude = Math.random() * 500
         points.push({ 
             name: generateName(),
             coordinates: [lon, lat],
+            altitude
         })
         count++
     }
