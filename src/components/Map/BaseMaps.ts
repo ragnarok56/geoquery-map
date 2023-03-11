@@ -49,7 +49,6 @@ const mainBasemap = new TileLayer({
     id: 'basemap-tilelayer',
     getTileData: (tile) => {
         const tileSize = 512
-        console.log(tile.bbox)
         // @ts-ignore
         const {east, north, south, west} = tile.bbox
         const urlQueryStringParams = {
