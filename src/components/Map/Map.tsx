@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useCallback, useMemo } from 'react'
 import { ViewMode } from "@nebula.gl/edit-modes";
-import { PolygonLayer } from '@deck.gl/layers'
+import { PolygonLayer } from '@deck.gl/layers/typed'
 import { MapView, MapController } from '@deck.gl/core/typed'
 import { EditableGeoJsonLayer } from 'nebula.gl'
 import GL from '@luma.gl/constants';
@@ -9,7 +9,7 @@ import turfCentroid from '@turf/centroid';
 import bbox from '@turf/bbox'
 import * as d3 from 'd3'
 
-import DeckGL from '@deck.gl/react'
+import DeckGL from '@deck.gl/react/typed'
 
 import { generateGeohashes, generatePoints, valueGeneratorGenerator } from '../../data'
 
@@ -20,7 +20,7 @@ import { getViewBoundsClipped } from '../../utils/view'
 
 import BasemapLayers from './BaseMaps'
 
-import { EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
+import { BasemapLayer, EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
 import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
@@ -168,6 +168,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         //     controller: true
         // })
     ]
+
+    const onSetBaseMap = (basemap: BasemapLayer) => {
+        onEditorUpdated({
+            ...editor,
+            basemap
+        })
+    }
 
     const onTogglePerspective = () => {
         const updatedPerspective = !perspectiveEnabled
@@ -341,6 +348,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             });
 
             onEditorUpdated({
+                ...editor,
                 mode: getEditMode('view')
             })
         }
@@ -423,7 +431,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     })
 
     const layers = [
-        ...BasemapLayers,
+        editor.basemap.layer,
         geohashLayer,
         pointLayer,
         viewBoxPolygonLayer,
@@ -473,6 +481,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const onSwitchMode = (id) => {
         onEditorUpdated({
+            ...editor,
             mode: getEditMode(id)
         })
     };
@@ -481,14 +490,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
             <DeckGL
                 layerFilter={layerFilter}
-                // @ts-expect-error
-                layers={layers}
                 // @ts-ignore
+                layers={layers}
                 views={VIEWS}
-                // @ts-expect-error - this can an object of viewstates
                 viewState={viewStates}
                 // getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
-                // @ts-expect-error - not typed correctly, missing viewId prop
                 onViewStateChange={onViewStateChange}
                 onClick={onLayerClick}
                 height="100%"
@@ -498,6 +504,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             <Toolbar editor={editor}
                 perspectiveEnabled={perspectiveEnabled}
                 featureNamesVisible={featureNamesVisible}
+                onSetBaseMap={onSetBaseMap}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds}
                 onTogglePerspective={onTogglePerspective}

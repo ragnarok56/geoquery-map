@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Viewport } from '@deck.gl/core';
+import { Viewport } from '@deck.gl/core/typed';
 
  import {
   pixelsToWorld,

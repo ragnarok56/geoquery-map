@@ -1,6 +1,6 @@
 // @ts-ignore
-import {_Tileset2D as Tileset2D} from '@deck.gl/geo-layers';
-import { Viewport } from '@deck.gl/core';
+import {_Tileset2D as Tileset2D} from '@deck.gl/geo-layers/typed';
+import { Viewport } from '@deck.gl/core/typed';
 import { Matrix4 } from '@math.gl/core'
 
 type Bounds = [minX: number, minY: number, maxX: number, maxY: number];
@@ -173,7 +173,7 @@ export default class WMSTileset2D extends Tileset2D {
     return result
   }
 
-  getTileId({q}) {
+  getTileId(q) {
     console.log('getTileId', q)
     return q;
   }
@@ -183,7 +183,7 @@ export default class WMSTileset2D extends Tileset2D {
     return {};
   }
 
-  getTileZoom({q}) {
+  getTileZoom(q) {
     console.log('getTileZoom', q)
     return q.length;
   }
