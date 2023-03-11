@@ -5,9 +5,9 @@ import GeoQuery from './components/GeoQuery/GeoQuery'
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
         <GeoQuery/>
-      </header>
+      {/* <header className="App-header">        
+      </header> */}
     </div>
   )
 }

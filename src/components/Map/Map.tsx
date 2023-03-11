@@ -25,13 +25,13 @@ import { getEditMode } from '../../utils/editing';
 import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
 import LayerControl from '../LayerControl';
-import GeohashLayerControl from '../LayerControl/GeohashLayerControl';
+import GeohashLayerControl, { colorDomains } from '../LayerControl/GeohashLayerControl';
 import WGS84Viewport from './WGS84Viewport';
 import WGS84MapView from './WGS84MapView';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
-    return [16, 8, 0].map((shift) => ((value >> shift) & 0xff) / 255);
+    return [16, 8, 0].map((shift) => ((value >> shift) & 0xff));
 }
 
 const INITIAL_VIEW_STATE = {
@@ -126,7 +126,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
 
     const [featureNamesVisible, setFeatureNamesVisible] = useState(true)
 
-    const [geohashLayerConfig, setGeohashLayerConfig] = useState({})
+    const [geohashLayerConfig, setGeohashLayerConfig] = useState({
+        extruded: false,
+        opacity: 0.5,
+        color: colorDomains[0]
+    })
 
     const [viewStates, setViewStates] = useState({
         mainmap: INITIAL_VIEW_STATE,
@@ -191,9 +195,11 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }));
     }
 
+    
+
     const _getDeckColorForFeature = (index: number, bright: number, alpha: number): RGBAColor => {
         const length = FEATURE_COLORS.length;
-        const color = FEATURE_COLORS[index % length].map((c) => c * bright * 255);
+        const color = FEATURE_COLORS[index % length].map((c) => c * bright);
 
         // @ts-ignore
         return [...color, alpha * 255];
@@ -250,8 +256,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
             
             const feature = (i !== undefined && i !== null) ? editingFeatures.featureCollection.features[i] : editingFeatures.featureCollection
             const [minLng, minLat, maxLng, maxLat] = bbox(feature); // Turf.js
-            // const viewport = new WebMercatorViewport(currentViewStates.mainmap);
-            const viewport = new WGS84Viewport(currentViewStates.mainmap);
+            const viewport = new WebMercatorViewport(currentViewStates.mainmap);
+            // const viewport = new WGS84Viewport(currentViewStates.mainmap);
             const viewBounds = viewport.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
                 padding: 50
             })
@@ -382,6 +388,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                 text: x.properties?.name
             }
         })
+
     const geoJsonNamesLayer = new TextLayer({
         id: 'geojson-names-layer',
         visible: featureNamesVisible,
@@ -391,6 +398,8 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         }
     })
     
+    console.log(geohashLayerConfig)
+
     const geohashLayer = new GeohashLayer({
         id: 'geohash-layer',
         data: geohashData,
@@ -398,10 +407,13 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
         wireframe: false,
         filled: true,
         ...geohashLayerConfig,
+        getFillColor: d => geohashLayerConfig.color.getFillColor(d),
         getGeohash: d => d.geohash,
-        getFillColor: d => [d.value * 255, (1 - d.value) * 255, (1 - d.value) * 128],
         getElevation: d => d.value * 100,
-        transitions
+        transitions,
+        updateTriggers: {
+            getFillColor: geohashLayerConfig.color,
+        },
     })
 
     const pointLayer = new ScatterplotLayer({
