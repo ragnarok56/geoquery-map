@@ -39,7 +39,7 @@ const GeohashLayerControl = ({
     onLayerConfigUpdated
 }: GeohashLayerControlProps) => {
     return (
-        <div style={{ position: 'absolute', bottom: 0, left: 0, padding: 5, margin: 10, background: '#888', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: 5, margin: 10, display: 'flex', flexDirection: 'column' }}>
             <h4 style={ { margin: 0 } }>Geohash Layer Options</h4>
             <SliderInput
                 label="Opacity"

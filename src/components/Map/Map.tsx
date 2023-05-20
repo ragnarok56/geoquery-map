@@ -14,7 +14,7 @@ import DeckGL from '@deck.gl/react/typed'
 import { generateGeohashes, generatePoints, valueGeneratorGenerator } from '../../data'
 
 import { GeohashLayer } from '@deck.gl/geo-layers/typed'
-import Toolbar from '../ToolBar'
+import { Toolbar, BaseMaps } from '../ToolBar'
 
 import { getViewBoundsClipped } from '../../utils/view'
 
@@ -499,41 +499,52 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
     };
 
     return (
-        <div style={{ alignItems: 'stretch', display: 'flex', height: '100vh' }}>
-            <DeckGL
-                layerFilter={layerFilter}
-                // @ts-ignore
-                layers={layers}
-                views={VIEWS}
-                viewState={viewStates}
-                // getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
-                onViewStateChange={onViewStateChange}
-                onClick={onLayerClick}
-                height="100%"
-                width="100%"
-                onHover={(info) => setCursorCoordiantes(info.coordinate)} 
-                getTooltip={ getTooltip }/>
-            <Toolbar editor={editor}
+        <div style={{ display: 'flex' }}>
+            <Toolbar 
+                editor={editor}
                 perspectiveEnabled={perspectiveEnabled}
                 featureNamesVisible={featureNamesVisible}
-                onSetBaseMap={onSetBaseMap}
                 onSetMode={onSwitchMode}
                 onRefresh={onSetViewBounds}
                 onTogglePerspective={onTogglePerspective}
                 onToggleFeatureNamesVisible={() => setFeatureNamesVisible(x => !x)}/>
-            <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888' }}>
-                {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
+            <div style={{ position: 'relative', alignItems: 'stretch', display: 'flex', height: '100vh', width: '100vw' }}>
+                <DeckGL
+                    layerFilter={layerFilter}
+                    // @ts-ignore
+                    layers={layers}
+                    views={VIEWS}
+                    viewState={viewStates}
+                    // getCursor={editableGeoJsonLayer.getCursor.bind(editableGeoJsonLayer)}
+                    onViewStateChange={onViewStateChange}
+                    onClick={onLayerClick}
+                    height="100%"
+                    width="100%"
+                    onHover={(info) => setCursorCoordiantes(info.coordinate)} 
+                    getTooltip={ getTooltip }/>
+                <div style={ { background: '#888' } }>
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888', margin: '10px'}}>
+                        {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
+                    </div>
+                    <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', margin: '10px' }}>
+                        <BaseMaps 
+                            selectedBaseMapId={editor.basemap.id}
+                            onSetBaseMap={onSetBaseMap}/>
+                        <NAIControl
+                            editingFeatures={ editingFeatures }
+                            onDeleteFeature={ handleDeleteFeature }
+                            onToggleSelectFeature={ handleToggleSelectFeature }
+                            onEditFeatureName={ handleEditFeatureName }
+                            onEditFeatureCollectionName={ handleEditFeatureCollectionName }
+                            onFlyToFeature={ handleFlyToFeature }/>
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, background: '#888', margin: '10px'}}>
+                        <GeohashLayerControl
+                            layerConfig={ geohashLayerConfig }
+                            onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
+                    </div>
+                </div>
             </div>
-            <NAIControl
-                editingFeatures={ editingFeatures }
-                onDeleteFeature={ handleDeleteFeature }
-                onToggleSelectFeature={ handleToggleSelectFeature }
-                onEditFeatureName={ handleEditFeatureName }
-                onEditFeatureCollectionName={ handleEditFeatureCollectionName }
-                onFlyToFeature={ handleFlyToFeature }/>
-            <GeohashLayerControl
-                layerConfig={ geohashLayerConfig }
-                onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
         </div>
     )
 }

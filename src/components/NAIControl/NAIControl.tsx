@@ -19,33 +19,31 @@ const NAIControl = ({
     onFlyToFeature
 }: NAIControlProps) => {
     return (
-        <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', fontFamily: 'monospace' }}>
-            <div>
-                <input type="text" value={ editingFeatures.name || "New NAI" }
-                    onChange={ (e) => onEditFeatureCollectionName(e.target.value) }/>
-                <span onClick={() => onFlyToFeature()}
+        <div style={{ fontFamily: 'monospace' }}>
+            <input type="text" value={ editingFeatures.name || "New NAI" }
+                onChange={ (e) => onEditFeatureCollectionName(e.target.value) }/>
+            <span onClick={() => onFlyToFeature()}
+                            title="fly to"
+                            style={{ cursor: 'pointer' }}>O</span>
+            <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
+                {editingFeatures.featureCollection.features.map((x, i) => {
+                    return (
+                        <li key={i}>
+                            <input type="checkbox" checked={ editingFeatures.selectedFeatureIndexes.includes(i)}
+                                onChange={ () => onToggleSelectFeature(i) }/>
+                            <input style={{ marginRight: '10px' }}
+                                type="text" value={x.properties?.name}
+                                onChange={ e => onEditFeatureName(i, e.target.value) }/>
+                            <span onClick={() => onDeleteFeature(i)}
+                                title="delete"
+                                style={{ cursor: 'pointer' }}>X</span>
+                            <span onClick={() => onFlyToFeature(i)}
                                 title="fly to"
                                 style={{ cursor: 'pointer' }}>O</span>
-                <ul style={{ listStyle: 'none', margin: 0, padding: '10px' }}>
-                    {editingFeatures.featureCollection.features.map((x, i) => {
-                        return (
-                            <li key={i}>
-                                <input type="checkbox" checked={ editingFeatures.selectedFeatureIndexes.includes(i)}
-                                    onChange={ () => onToggleSelectFeature(i) }/>
-                                <input style={{ marginRight: '10px' }}
-                                    type="text" value={x.properties?.name}
-                                    onChange={ e => onEditFeatureName(i, e.target.value) }/>
-                                <span onClick={() => onDeleteFeature(i)}
-                                    title="delete"
-                                    style={{ cursor: 'pointer' }}>X</span>
-                                <span onClick={() => onFlyToFeature(i)}
-                                    title="fly to"
-                                    style={{ cursor: 'pointer' }}>O</span>
-                            </li>
-                        )
-                    })}
-                </ul>
-            </div>
+                        </li>
+                    )
+                })}
+            </ul>
         </div>
     )
 }
