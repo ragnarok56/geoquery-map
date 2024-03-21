@@ -18,16 +18,20 @@ import { Toolbar, BaseMaps } from '../ToolBar'
 
 import { getViewBoundsClipped } from '../../utils/view'
 
-import BasemapLayers from './BaseMaps'
 
 import { BasemapLayer, EditorState, NAIEditing, NAIFeatureCollection } from '../../types'
 import { getEditMode } from '../../utils/editing';
 import { FlyToInterpolator, RGBAColor, ScatterplotLayer, TextLayer, WebMercatorViewport } from 'deck.gl';
 import NAIControl from '../NAIControl';
-import LayerControl from '../LayerControl';
 import GeohashLayerControl, { colorDomains } from '../LayerControl/GeohashLayerControl';
-import WGS84Viewport from './WGS84Viewport';
-import WGS84MapView from './WGS84MapView';
+
+import ExploreIcon from '@mui/icons-material/Explore'
+import ExploreOff from '@mui/icons-material/ExploreOff'
+import ColorLens from '@mui/icons-material/ColorLens'
+import Layers from '@mui/icons-material/Layers'
+import IconControlButton from '../Controls/ControlButton';
+import PopoverControlButton from '../Controls/PopoverControlButton';
+import Panel from '../Controls/Panel';
 
 function hex2rgb(hex: string) {
     const value = parseInt(hex, 16);
@@ -523,13 +527,27 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                     onHover={(info) => setCursorCoordiantes(info.coordinate)} 
                     getTooltip={ getTooltip }/>
                 <div style={ { background: '#888' } }>
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#888', margin: '10px'}}>
+                    <Panel style={{ position: 'absolute', bottom: 0, right: 0, margin: '16px' }}>
                         {cursorCoordinates && (<span>{cursorCoordinates[1] + ', ' + cursorCoordinates[0]}</span>)}
+                    </Panel>
+                    <div style={{ position: 'absolute', top: 0, right: 0, margin: '16px' }}>
+                        <div style={ { display: 'flex', flexDirection: 'column' } }>
+                            <PopoverControlButton icon={ <Layers/> }>
+                                <BaseMaps 
+                                    selectedBaseMapId={editor.basemap.id}
+                                    onSetBaseMap={onSetBaseMap}/>
+                            </PopoverControlButton>
+                            <IconControlButton onClick={ onTogglePerspective }>
+                                { perspectiveEnabled ? <ExploreIcon/> : <ExploreOff/> }
+                            </IconControlButton>
+                            <PopoverControlButton icon={ <ColorLens/> }>
+                                <GeohashLayerControl
+                                    layerConfig={ geohashLayerConfig }
+                                    onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
+                            </PopoverControlButton>
+                        </div>
                     </div>
-                    <div style={{ position: 'absolute', top: 0, right: 0, background: '#888', margin: '10px' }}>
-                        <BaseMaps 
-                            selectedBaseMapId={editor.basemap.id}
-                            onSetBaseMap={onSetBaseMap}/>
+                    <Panel style={{ position: 'absolute', bottom: 0, left: 0, margin: '16px' }}>
                         <NAIControl
                             editingFeatures={ editingFeatures }
                             onDeleteFeature={ handleDeleteFeature }
@@ -537,12 +555,7 @@ const Map = ({ seed, editor, onEditorUpdated }: MapProps) => {
                             onEditFeatureName={ handleEditFeatureName }
                             onEditFeatureCollectionName={ handleEditFeatureCollectionName }
                             onFlyToFeature={ handleFlyToFeature }/>
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, background: '#888', margin: '10px'}}>
-                        <GeohashLayerControl
-                            layerConfig={ geohashLayerConfig }
-                            onLayerConfigUpdated={ x => setGeohashLayerConfig(x) }/>
-                    </div>
+                    </Panel>
                 </div>
             </div>
         </div>

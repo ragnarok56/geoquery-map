@@ -1,7 +1,7 @@
 import React from 'react'
-import { BasemapLayer, EditorState } from '../../types'
+import { EditorState } from '../../types'
 import { MODES } from '../../utils/editing'
-import BasemapLayers from '../Map/BaseMaps'
+import { Button } from '@mui/material'
 
 interface ToolbarProps {
     editor: EditorState
@@ -15,25 +15,17 @@ interface ToolbarProps {
 
 const Toolbar = ({ 
     editor,
-    perspectiveEnabled,
     featureNamesVisible,
     onRefresh,
     onSetMode,
-    onTogglePerspective,
     onToggleFeatureNamesVisible,
 }: ToolbarProps) => {
     return (
-        <div style={{ padding: '10px', width: '400px', background: '#888' }}>
-            <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333" }}
-                onClick={onRefresh}>
-                <span>"Refresh"</span>
+        <div style={{ padding: '10px', width: '400px' }}>
+            <div>
+                <Button onClick={ onRefresh }>Refresh</Button>
             </div>
-            <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333", fontSize: 16 }}
-                onClick={onTogglePerspective}>
-                <span>{ perspectiveEnabled ? 'Exit the 3rd Dimension' : 'Enter the 3rd Dimension' }</span>
-            </div>
-
-            <h4 style={ { margin: 0 } }>Edit Mode</h4>
+            <h4 style={ { margin: 0, color: 'black' } }>Edit Mode</h4>
             <ul style={ { listStyle: 'none', textAlign: 'left', padding: 0, margin: 0, marginBottom: '10px' } }>
                 { MODES.map((mode) => (
                     <li key={ mode.id } value={ mode.id } 
@@ -43,10 +35,8 @@ const Toolbar = ({
                     </li>
                 )) }
             </ul>
-
-            <div style={{ cursor: 'pointer', padding: '10px', marginBottom: '10px', background: "#333", fontSize: 16 }}
-                onClick={onToggleFeatureNamesVisible}>
-                <span>{ featureNamesVisible ? 'Hide Feature Names' : 'Show Feature Names' }</span>
+            <div>
+                <Button onClick={onToggleFeatureNamesVisible} variant='contained'>{ featureNamesVisible ? 'Hide Feature Names' : 'Show Feature Names' }</Button>
             </div>
         </div>
     )

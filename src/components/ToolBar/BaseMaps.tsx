@@ -1,6 +1,7 @@
 import React from 'react'
 import BasemapLayers from '../Map/BaseMaps'
 import { BasemapLayer } from '../../types'
+import Panel from '../Controls/Panel'
 
 interface BaseMapsProps {
     selectedBaseMapId: string
@@ -9,7 +10,7 @@ interface BaseMapsProps {
 
 const BaseMaps = ({ onSetBaseMap, selectedBaseMapId }: BaseMapsProps) => {
     return (   
-        <>       
+        <Panel>
             <h4 style={ { margin: 0 } }>BaseMap</h4>
             <ul style={ { listStyle: 'none', textAlign: 'left', padding: 0, margin: 0, marginBottom: '10px' } }>
                 { BasemapLayers.map((basemap) => (
@@ -20,7 +21,7 @@ const BaseMaps = ({ onSetBaseMap, selectedBaseMapId }: BaseMapsProps) => {
                     </li>
                 )) }
             </ul>
-        </>  
+        </Panel>  
     )
 }
 

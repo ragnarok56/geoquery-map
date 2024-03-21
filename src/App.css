@@ -37,3 +37,16 @@
     transform: rotate(360deg);
   }
 }
+
+
+
+/* Customizing Material-UI Button */
+.MuiButtonBase-root.MuiButton-root,
+.MuiButtonBase-root.MuiIconButton-root {
+    overflow: hidden; /* Ensure ripple effect extends to edges */
+}
+
+/* Customizing ripple effect */
+.MuiButtonBase-root .MuiTouchRipple-root .MuiTouchRipple-child {
+    border-radius: 0 !important; /* Ensure ripple effect extends to edges */
+}

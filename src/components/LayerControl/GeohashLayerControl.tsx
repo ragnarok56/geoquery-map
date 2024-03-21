@@ -2,6 +2,7 @@ import React from 'react'
 import * as d3 from 'd3';
 
 import SliderInput from '../SliderInput'
+import Panel from '../Controls/Panel';
 
 interface GeohashLayerControlProps {
     layerConfig: any
@@ -39,7 +40,7 @@ const GeohashLayerControl = ({
     onLayerConfigUpdated
 }: GeohashLayerControlProps) => {
     return (
-        <div style={{ padding: 5, margin: 10, display: 'flex', flexDirection: 'column' }}>
+        <Panel style={{ display: 'flex', flexDirection: 'column' }}>
             <h4 style={ { margin: 0 } }>Geohash Layer Options</h4>
             <SliderInput
                 label="Opacity"
@@ -69,7 +70,7 @@ const GeohashLayerControl = ({
                     </li>
                 )) }
             </ul>
-        </div>
+        </Panel>
     )
 }
 
